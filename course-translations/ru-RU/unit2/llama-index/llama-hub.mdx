@@ -1,0 +1,56 @@
+# Знакомство с LlamaHub [[introduction-to-the-llamahub]]
+
+**LlamaHub — каталог сотен интеграций, агентов и инструментов, доступных для использования в LlamaIndex.**
+
+![LlamaHub](https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit2/llama-index/llama-hub.png)
+
+В курсе мы будем использовать разные интеграции, поэтому сначала посмотрим, чем нам поможет LlamaHub.
+
+Разберёмся, как находить и устанавливать зависимости для нужных компонентов.
+
+## Установка [[installation]]
+
+Инструкции по установке LlamaIndex собраны в хорошо организованный **каталог на [LlamaHub](https://llamahub.ai/)**.
+Поначалу разнообразие может сбивать с толку, но большинство **команд установки следует простому шаблону, который легко запомнить**:
+
+```bash
+pip install llama-index-{component-type}-{framework-name}
+```
+
+Попробуем установить зависимости для LLM и компонента эмбеддингов, используя [интеграцию с Hugging Face Inference API](https://llamahub.ai/l/llms/llama-index-llms-huggingface-api?from=llms).
+
+```bash
+pip install llama-index-llms-huggingface-api llama-index-embeddings-huggingface
+```
+
+## Использование [[usage]]
+
+После установки посмотрим, как пользоваться компонентами. Обратите внимание: пути импорта повторяют структуру команды установки!
+Ниже приведён пример **LLM-компонента, работающего через Hugging Face Inference API**.
+
+```python
+from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI
+import os
+from dotenv import load_dotenv
+
+# Load the .env file
+load_dotenv()
+
+# Retrieve HF_TOKEN from the environment variables
+hf_token = os.getenv("HF_TOKEN")
+
+llm = HuggingFaceInferenceAPI(
+    model_name="Qwen/Qwen2.5-Coder-32B-Instruct",
+    temperature=0.7,
+    max_tokens=100,
+    token=hf_token,
+    provider="auto"
+)
+
+response = llm.complete("Hello, how are you?")
+print(response)
+# I am good, how can I help you today?
+```
+
+Отлично! Теперь мы умеем находить, устанавливать и использовать нужные интеграции.
+**Познакомимся с компонентами подробнее** и посмотрим, как создавать с их помощью собственных агентов.

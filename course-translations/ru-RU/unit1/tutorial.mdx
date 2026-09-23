@@ -1,0 +1,140 @@
+# Создаём первого локального агента на Ubuntu с LangGraph [[lets-create-our-first-agent-using-smolagents]]
+
+В предыдущем уроке мы собрали цикл агента вручную: модель получила вопрос, предложила действие, Python выполнил инструмент и вернул модели наблюдение. Так легче понять устройство агента, но поддерживать каждый шаг самостоятельно утомительно. Библиотека для агентов берёт на себя маршрутизацию сообщений и вызовов инструментов.
+
+Здесь вы создадите Альфреда — своего первого **локального агента**. Он узнает текущее время в выбранном часовом поясе и точно перемножит два целых числа. Модель будет работать через Ollama **на вашем Ubuntu сервере**, а LangGraph организует цикл «решение → действие → наблюдение → ответ». Для упражнения не нужны Hugging Face Space и API-токен. Интернет понадобится при установке пакетов и скачивании модели.
+
+## Почему LangGraph? [[what-is-smolagents]]
+
+В оригинальном уроке Hugging Face используется `smolagents`: это компактная библиотека, в которой `CodeAgent` может предлагать действия в виде исполняемого кода. Она остаётся полезной, и мы изучим её в разделе 2. Для первого локального упражнения возьмём **LangGraph**: явные узлы и переходы позволяют увидеть, где именно модель принимает решение, где выполняется инструмент и когда агент завершает работу. Это хороший фундамент для более сложных рабочих процессов.
+
+> [!NOTE]
+> Библиотека сама по себе не делает пример «готовым к production». Для настоящего сервиса понадобятся контроль доступа, ограничения ресурсов, хранение состояния, наблюдаемость и проверка результатов. Здесь мы разбираем небольшой учебный граф.
+
+## Подготовьте Ubuntu сервер [[prepare-ubuntu]]
+
+Вам нужен сервер с Ubuntu, доступом в терминал и Python 3.10 или новее. У выбранной [модели `qwen3:4b-instruct`](https://ollama.com/library/qwen3:4b-instruct) размер загрузки около 2,5 ГБ; во время работы потребуется дополнительная оперативная память. На CPU она тоже запускается, но отвечает медленнее. Если сервер маломощный, можно выбрать меньшую модель с поддержкой вызова инструментов; тогда измените и команду `ollama pull`, и переменную `LOCAL_AGENT_MODEL`.
+
+Установите Ollama по [официальной инструкции для Linux](https://docs.ollama.com/linux):
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+sudo systemctl status ollama --no-pager
+ollama pull qwen3:4b-instruct
+curl http://127.0.0.1:11434/api/tags
+```
+
+Последняя команда должна показать загруженную модель. Установщик обычно создаёт системный сервис. Если вы установили Ollama вручную без сервиса, запустите `ollama serve` в отдельном терминале. Не запускайте второй процесс, если порт `11434` уже занят работающей Ollama. Оставьте Ollama доступной только на `127.0.0.1`: агент в этом уроке обращается к ней на том же сервере.
+
+Установите Python и создайте отдельное окружение проекта:
+
+```bash
+sudo apt update
+sudo apt install python3 python3-venv python3-pip
+cd first-local-agent
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+Папка `first-local-agent` находится рядом с папкой ридера в локальной версии курса. Если вы работаете с сервером по SSH, перенесите её туда, например командой `scp -r first-local-agent user@server:~/` из родительской папки на своём компьютере. Файлы также можно открыть и скачать из ридера: [agent.py](/course/examples/first-local-agent/agent.py), [manual_agent.py](/course/examples/first-local-agent/manual_agent.py), [requirements.txt](/course/examples/first-local-agent/requirements.txt) и [тест](/course/examples/first-local-agent/test_agent.py).
+
+## Инструменты: что агент может сделать [[the-tools]]
+
+Инструмент — обычная функция Python с определёнными параметрами и описанием. LangGraph показывает модели его схему, но **код выполняет Python**, когда модель выбирает инструмент. Наши инструменты не делают сетевых запросов:
+
+```python
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from langchain_core.tools import tool
+
+@tool
+def get_current_time_in_timezone(timezone: str) -> str:
+    """Return the current time in an IANA timezone, e.g. Europe/Moscow.
+
+    Args:
+        timezone: IANA timezone name.
+    """
+    return datetime.now(ZoneInfo(timezone)).isoformat(timespec="seconds")
+
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply two integers exactly.
+
+    Args:
+        a: First integer.
+        b: Second integer.
+    """
+    return a * b
+```
+
+Декоратор `@tool` превращает функцию и её описание в инструмент. Типы `str` и `int` помогают задать ожидаемые аргументы. Описание отвечает модели на вопрос «когда вызывать эту функцию?». В полном [agent.py](/course/examples/first-local-agent/agent.py) обработан и неизвестный часовой пояс, чтобы один неверный аргумент не ломал упражнение.
+
+Заметьте: инструмент времени даёт **текущее время сервера** в запрошенном часовом поясе. LLM сама по себе не знает текущих показаний часов. Инструмент умножения возвращает результат вычисления Python, а не догадку модели. Если добавить новый инструмент, вы дадите агенту новую способность. Начинайте с функций с ясными аргументами и небольшими полномочиями.
+
+## Модель и граф агента [[the-agent]]
+
+Ollama обслуживает модель на локальном порту. `ChatOllama` связывает её с LangGraph, а `bind_tools` сообщает модели, какие вызовы доступны:
+
+```python
+from langchain_ollama import ChatOllama
+
+model = ChatOllama(
+    model="qwen3:4b-instruct",
+    base_url="http://127.0.0.1:11434",
+    temperature=0,
+)
+model_with_tools = model.bind_tools([get_current_time_in_timezone, multiply])
+```
+
+Модель **предлагает** имя инструмента и аргументы. Она не исполняет Python-код сама. Узел `ToolNode` проверяет название по заданному списку и вызывает разрешённую функцию. `tools_condition` направляет граф к инструментам, если модель предложила вызов, или завершает его, когда получен обычный ответ:
+
+```python
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.graph import START, MessagesState, StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
+
+def call_model(state: MessagesState):
+    reply = model_with_tools.invoke([
+        SystemMessage(content="Ты Альфред. Для текущего времени вызывай инструмент. Отвечай по-русски."),
+        *state["messages"],
+    ])
+    return {"messages": [reply]}
+
+graph = StateGraph(MessagesState)
+graph.add_node("assistant", call_model)
+graph.add_node("tools", ToolNode([get_current_time_in_timezone, multiply]))
+graph.add_edge(START, "assistant")
+graph.add_conditional_edges("assistant", tools_condition)
+graph.add_edge("tools", "assistant")
+agent = graph.compile()
+
+result = agent.invoke(
+    {"messages": [HumanMessage(content="Который час в Europe/Moscow?")]},
+    config={"recursion_limit": 12},
+)
+print(result["messages"][-1].content)
+```
+
+`MessagesState` накапливает сообщения: вопрос, решение модели, результат инструмента и окончательный ответ. Ребро из `tools` обратно в `assistant` создаёт повторение цикла. `recursion_limit` ограничивает число шагов, чтобы ошибка или неудачный ответ не заставили агента работать бесконечно. Полная программа в [agent.py](/course/examples/first-local-agent/agent.py) также проверяет доступность Ollama и выводит понятную диагностику.
+
+## Запустите и проверьте агента [[run-and-check]]
+
+Из папки проекта с активным виртуальным окружением выполните:
+
+```bash
+python -m unittest -v
+python agent.py 'Который час в Europe/Moscow и сколько будет 17 умножить на 4?' --trace
+```
+
+Первую команду можно выполнить даже без загруженной модели: тест подставляет имитацию ответов LLM и проверяет цикл «действие → наблюдение → ответ». Вторая команда использует настоящую локальную модель. С флагом `--trace` вы увидите вызовы инструментов и их результаты, например `multiply({'a': 17, 'b': 4})` и наблюдение `68`. Формулировка ответа модели может меняться. Если она не вызвала нужный инструмент, попробуйте более явный запрос: «Используй инструмент multiply для 17 и 4». Это полезное наблюдение о поведении небольшой модели, а не доказательство, что расчёт выполнен.
+
+При ошибке подключения проверьте `systemctl status ollama` и `curl http://127.0.0.1:11434/api/tags`. Если модель не найдена, повторите `ollama pull qwen3:4b-instruct`. Если ответ слишком медленный, проверьте доступную память и нагрузку на сервер.
+
+## Как это связано с оригинальным уроком [[the-system-prompt]]
+
+У нас получился тот же основной механизм, который мы изучали у Hugging Face: **модель принимает решение, инструмент выполняет действие, результат становится наблюдением, после чего модель отвечает или выбирает следующий шаг**. Мы заменили облачную площадку и вызовы API локальной моделью, а шаблон Space — небольшим проектом на Ubuntu. Изображения, веб-поиск и другие внешние возможности можно добавить позже; они уже требуют отдельных сервисов, доступов и правил безопасности.
+
+Попробуйте добавить собственный инструмент с описанием и тестом, а затем задайте Альфреду вопрос, для которого он нужен. В следующем разделе вас ждёт итоговый тест по основам агентов.
+
+**Источники команд и API:** [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/quickstart), [ChatOllama](https://docs.langchain.com/oss/python/integrations/chat/ollama), [установка Ollama на Linux](https://docs.ollama.com/linux). Проверено по документации 23 сентября 2026 года.

@@ -1,0 +1,321 @@
+<CourseFloatingBanner 
+  classNames="absolute z-10 right-0 top-0"
+  notebooks={[
+    {label: "Google Colab", value: "https://colab.research.google.com/#fileId=https://huggingface.co/agents-course/notebooks/blob/main/unit2/smolagents/tools.ipynb"},
+]} 
+askForHelpUrl="http://hf.co/join/discord" />
+
+# Инструменты [[tools]]
+
+Как мы узнали в [разделе 1](https://huggingface.co/learn/agents-course/unit1/tools), агенты выполняют разнообразные действия с помощью инструментов. В `smolagents` инструменты — это **функции, которые LLM может вызывать внутри агентной системы**.
+
+Чтобы взаимодействовать с инструментом, LLM нужно **описание его интерфейса** со следующими основными элементами:
+
+- **Имя:** как называется инструмент.
+- **Описание инструмента:** что он делает.
+- **Типы и описания входных данных:** какие аргументы принимает инструмент.
+- **Тип выходных данных:** что инструмент возвращает.
+
+Например, во время подготовки вечеринки в поместье Уэйнов Альфреду нужны разные инструменты для сбора информации — от поиска кейтеринговых служб до подбора идей для темы вечеринки. Интерфейс простого поискового инструмента мог бы выглядеть так:
+
+- **Имя:** `web_search`.
+- **Описание инструмента:** ищет информацию в интернете по заданному запросу.
+- **Вход:** `query` (строка) — поисковый запрос.
+- **Выход:** строка с результатами поиска.
+
+С помощью этих инструментов Альфред сможет принимать обоснованные решения и собрать всю информацию для идеальной вечеринки.
+
+Анимация ниже показывает, как обрабатывается вызов инструмента:
+
+![Процесс работы агента из https://huggingface.co/docs/smolagents/conceptual_guides/react](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif)
+
+## Способы создания инструментов [[tool-creation-methods]]
+
+В `smolagents` инструменты можно определить двумя способами:
+1. **Декоратором `@tool`** — для простых инструментов на основе функций.
+2. **Созданием подкласса `Tool`** — для более сложных возможностей.
+
+### Декоратор `@tool` [[the-tool-decorator]]
+
+Декоратор `@tool` — **рекомендуемый способ определения простых инструментов**. Под капотом smolagents извлекает основную информацию о функции из Python. Поэтому понятное имя и качественная docstring помогают LLM правильно пользоваться инструментом.
+
+При таком подходе мы определяем функцию, у которой есть:
+
+- **Понятное, описательное имя**, помогающее LLM понять её назначение.
+- **Аннотации типов входных и выходных данных**, необходимые для правильного использования.
+- **Подробное описание**, включая раздел `Args:` с явным описанием каждого аргумента. Эти сведения дают LLM важный контекст, поэтому их нужно писать внимательно.
+
+#### Создаём инструмент для поиска кейтеринга с лучшими оценками [[generating-a-tool-that-retrieves-the-highest-rated-catering]]
+
+<img src="https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit2/smolagents/alfred-catering.jpg" alt="Альфред выбирает кейтеринг"/>
+
+> [!TIP]
+> Код урока доступен в <a href="https://huggingface.co/agents-course/notebooks/blob/main/unit2/smolagents/tools.ipynb" target="_blank">этом блокноте</a>, который можно запустить в Google Colab.
+
+Представим, что Альфред уже определился с меню, но теперь ему нужна помощь с приготовлением еды для такого количества гостей. Он хочет нанять кейтеринговую службу и выбрать варианты с лучшими оценками. Для поиска лучших служб поблизости Альфред может воспользоваться инструментом.
+
+Вот как реализовать это с помощью декоратора `@tool`:
+
+```python
+from smolagents import CodeAgent, InferenceClientModel, tool
+
+# Let's pretend we have a function that fetches the highest-rated catering services.
+@tool
+def catering_service_tool(query: str) -> str:
+    """
+    This tool returns the highest-rated catering service in Gotham City.
+
+    Args:
+        query: A search term for finding catering services.
+    """
+    # Example list of catering services and their ratings
+    services = {
+        "Gotham Catering Co.": 4.9,
+        "Wayne Manor Catering": 4.8,
+        "Gotham City Events": 4.7,
+    }
+
+    # Find the highest rated catering service (simulating search query filtering)
+    best_service = max(services, key=services.get)
+
+    return best_service
+
+
+agent = CodeAgent(tools=[catering_service_tool], model=InferenceClientModel())
+
+# Run the agent to find the best catering service
+result = agent.run(
+    "Can you give me the name of the highest-rated catering service in Gotham City?"
+)
+
+print(result)   # Output: Gotham Catering Co.
+```
+
+### Определяем инструмент как класс Python [[defining-a-tool-as-a-python-class]]
+
+Этот подход предполагает создание подкласса [`Tool`](https://huggingface.co/docs/smolagents/v1.8.1/en/reference/tools#smolagents.Tool). Сложный инструмент можно реализовать классом вместо обычной функции Python. Класс дополняет функцию метаданными, которые помогают LLM эффективно её использовать. В классе мы определяем:
+
+- `name`: имя инструмента.
+- `description`: описание, включаемое в системный промпт агента.
+- `inputs`: словарь с ключами `type` и `description`, содержащий информацию для обработки входных данных интерпретатором Python.
+- `output_type`: ожидаемый тип результата.
+- `forward`: метод с логикой, которую нужно выполнить при вызове.
+
+Ниже приведены пример инструмента на основе `Tool` и его подключение к `CodeAgent`.
+
+#### Создаём инструмент для генерации идей супергеройской вечеринки [[generating-a-tool-to-generate-ideas-about-the-superhero-themed-party]]
+
+Вечеринка Альфреда в особняке **посвящена супергероям**, но ему нужны творческие идеи, чтобы сделать её особенной. Как прекрасный хозяин, он хочет удивить гостей оригинальной темой.
+
+Для этого можно использовать агента, который придумывает идеи супергеройской вечеринки по заданной категории. Так Альфред сможет найти тему, которая по-настоящему впечатлит гостей.
+
+```python
+from smolagents import Tool, CodeAgent, InferenceClientModel
+
+class SuperheroPartyThemeTool(Tool):
+    name = "superhero_party_theme_generator"
+    description = """
+    This tool suggests creative superhero-themed party ideas based on a category.
+    It returns a unique party theme idea."""
+
+    inputs = {
+        "category": {
+            "type": "string",
+            "description": "The type of superhero party (e.g., 'classic heroes', 'villain masquerade', 'futuristic Gotham').",
+        }
+    }
+
+    output_type = "string"
+
+    def forward(self, category: str):
+        themes = {
+            "classic heroes": "Justice League Gala: Guests come dressed as their favorite DC heroes with themed cocktails like 'The Kryptonite Punch'.",
+            "villain masquerade": "Gotham Rogues' Ball: A mysterious masquerade where guests dress as classic Batman villains.",
+            "futuristic Gotham": "Neo-Gotham Night: A cyberpunk-style party inspired by Batman Beyond, with neon decorations and futuristic gadgets."
+        }
+
+        return themes.get(category.lower(), "Themed party idea not found. Try 'classic heroes', 'villain masquerade', or 'futuristic Gotham'.")
+
+# Instantiate the tool
+party_theme_tool = SuperheroPartyThemeTool()
+agent = CodeAgent(tools=[party_theme_tool], model=InferenceClientModel())
+
+# Run the agent to generate a party theme idea
+result = agent.run(
+    "What would be a good superhero party idea for a 'villain masquerade' theme?"
+)
+
+print(result)  # Output: "Gotham Rogues' Ball: A mysterious masquerade where guests dress as classic Batman villains."
+```
+
+С таким инструментом Альфред станет настоящим суперхозяином и устроит супергеройскую вечеринку, которую гости не забудут! 🦸‍♂️🦸‍♀️
+
+## Стандартный набор инструментов [[default-toolbox]]
+
+В `smolagents` есть готовые инструменты, которые можно сразу добавить агенту. В [стандартный набор](https://huggingface.co/docs/smolagents/guided_tour?build-a-tool=Decorate+a+function+with+%40tool#default-toolbox) входят:
+
+- **PythonInterpreterTool**
+- **FinalAnswerTool**
+- **UserInputTool**
+- **DuckDuckGoSearchTool**
+- **GoogleSearchTool**
+- **VisitWebpageTool**
+
+Для безупречной вечеринки в поместье Уэйнов Альфред может использовать несколько инструментов:
+
+- Сначала `DuckDuckGoSearchTool` поможет найти оригинальные идеи на супергеройскую тему.
+
+- Затем `GoogleSearchTool` — выбрать кейтеринговые службы Готэма с лучшими оценками.
+
+- Для расчётов при составлении схемы рассадки пригодится `PythonInterpreterTool`.
+
+- Собрав всю информацию, Альфред оформит итоговый план с помощью `FinalAnswerTool`.
+
+С этими инструментами вечеринка получится и необычной, и отлично организованной. 🦇💡
+
+## Публикация и импорт инструментов [[sharing-and-importing-tools]]
+
+Одна из самых полезных возможностей **smolagents** — публикация собственных инструментов на Hub и простое подключение инструментов сообщества. Сюда входят **HF Spaces** и **инструменты LangChain**, которые заметно расширяют возможности Альфреда по организации незабываемой вечеринки в поместье Уэйнов. 🎭
+
+Благодаря этим интеграциям Альфреду доступны продвинутые средства планирования мероприятий: можно настроить освещение для нужной атмосферы, составить идеальный плейлист или связаться с лучшими кейтеринговыми службами Готэма.
+
+Посмотрим на примерах, как эти возможности помогут сделать вечеринку ещё лучше.
+
+### Публикуем инструмент на Hub [[sharing-a-tool-to-the-hub]]
+
+Поделиться собственным инструментом с сообществом легко! Загрузите его в свой аккаунт Hugging Face методом `push_to_hub()`.
+
+Например, Альфред может опубликовать `party_theme_tool`, чтобы помочь другим искать лучшие кейтеринговые службы Готэма. Вот как это сделать:
+
+```python
+party_theme_tool.push_to_hub("{your_username}/party_theme_tool", token="<YOUR_HUGGINGFACEHUB_API_TOKEN>")
+```
+
+### Импортируем инструмент с Hub [[importing-a-tool-from-the-hub]]
+
+Инструменты других пользователей легко импортировать функцией `load_tool()`. Например, Альфреду может понадобиться рекламное изображение для вечеринки, созданное ИИ. Вместо разработки инструмента с нуля он может взять готовый инструмент сообщества:
+
+```python
+from smolagents import load_tool, CodeAgent, InferenceClientModel
+
+image_generation_tool = load_tool(
+    "m-ric/text-to-image",
+    trust_remote_code=True
+)
+
+agent = CodeAgent(
+    tools=[image_generation_tool],
+    model=InferenceClientModel()
+)
+
+agent.run("Generate an image of a luxurious superhero-themed party at Wayne Manor with made-up superheros.")
+```
+
+### Импортируем Hugging Face Space как инструмент [[importing-a-hugging-face-space-as-a-tool]]
+
+С помощью `Tool.from_space()` можно импортировать HF Space в качестве инструмента. Это открывает доступ к тысячам Spaces сообщества для самых разных задач — от генерации изображений до анализа данных.
+
+Инструмент подключается к Gradio-бэкенду Space через `gradio_client`. Если этот пакет ещё не установлен, установите его через `pip`.
+
+Для объявления о вечеринке Альфред может сгенерировать изображение в существующем HF Space вместо готового инструмента из предыдущего примера. Давайте это реализуем!
+
+```python
+from smolagents import CodeAgent, InferenceClientModel, Tool
+
+image_generation_tool = Tool.from_space(
+    "black-forest-labs/FLUX.1-schnell",
+    name="image_generator",
+    description="Generate an image from a prompt"
+)
+
+model = InferenceClientModel("Qwen/Qwen2.5-Coder-32B-Instruct")
+
+agent = CodeAgent(tools=[image_generation_tool], model=model)
+
+agent.run(
+    "Improve this prompt, then generate an image of it.",
+    additional_args={'user_prompt': 'A grand superhero-themed party at Wayne Manor, with Alfred overseeing a luxurious gala'}
+)
+```
+
+### Импортируем инструмент LangChain [[importing-a-langchain-tool]]
+
+С фреймворком `LangChain` мы познакомимся в следующих уроках. Пока отметим, что инструменты LangChain можно повторно использовать в рабочем процессе smolagents!
+
+Их легко загрузить методом `Tool.from_langchain()`. Альфред, как всегда стремящийся к совершенству, готовит грандиозную супергеройскую ночь в поместье, пока Уэйны в отъезде. Чтобы каждая деталь превзошла ожидания, он обращается к инструментам LangChain за первоклассными идеями развлечений.
+
+С помощью `Tool.from_langchain()` Альфред добавляет своему агенту расширенные возможности поиска и находит необычные идеи и услуги всего несколькими командами.
+
+Вот как это работает.
+
+Сначала установим интеграцию `langchain` для `smolagents`.
+
+```bash
+pip install -U langchain-community
+```
+
+После установки задайте ключ SerpAPI.
+Он нужен для поисковых инструментов, таких как `SerpAPITool`:
+
+```python
+os.environ['SERPAPI_API_KEY'] = '...'
+```
+
+Создать ключ SerpAPI можно [здесь](https://serpapi.com/).
+
+```python
+from langchain.agents import load_tools
+from smolagents import CodeAgent, InferenceClientModel, Tool
+
+search_tool = Tool.from_langchain(load_tools(["serpapi"])[0])
+
+agent = CodeAgent(tools=[search_tool], model=model)
+
+agent.run("Search for luxury entertainment ideas for a superhero-themed event, such as live performances and interactive experiences.")
+```
+
+### Импортируем набор инструментов с любого MCP-сервера [[importing-a-tool-collection-from-any-mcp-server]]
+
+`smolagents` также позволяет импортировать инструменты с сотен MCP-серверов, представленных на [glama.ai](https://glama.ai/mcp/servers) и [smithery.ai](https://smithery.ai). Если хотите подробнее разобраться в MCP, пройдите наш [бесплатный курс по MCP](https://huggingface.co/learn/mcp-course/).
+
+<details>
+<summary>Установка MCP-клиента</summary>
+
+Сначала установим интеграцию `mcp` для `smolagents`.
+
+```bash
+pip install "smolagents[mcp]"
+```
+</details>
+
+Инструменты MCP-серверов можно загрузить в объект ToolCollection следующим образом:
+
+```python
+import os
+from smolagents import ToolCollection, CodeAgent
+from mcp import StdioServerParameters
+from smolagents import InferenceClientModel
+
+
+model = InferenceClientModel("Qwen/Qwen2.5-Coder-32B-Instruct")
+
+
+server_parameters = StdioServerParameters(
+    command="uvx",
+    args=["--quiet", "pubmedmcp@0.1.3"],
+    env={"UV_PYTHON": "3.12", **os.environ},
+)
+
+with ToolCollection.from_mcp(server_parameters, trust_remote_code=True) as tool_collection:
+    agent = CodeAgent(tools=[*tool_collection.tools], model=model, add_base_tools=True)
+    agent.run("Please find a remedy for hangover.")
+```
+
+С такой настройкой Альфред быстро найдёт роскошные развлечения и подарит элите Готэма незабываемые впечатления. Этот инструмент поможет ему организовать идеальную супергеройскую вечеринку в поместье Уэйнов! 🎉
+
+## Ресурсы [[resources]]
+
+- [Учебник по инструментам](https://huggingface.co/docs/smolagents/tutorials/tools) — как эффективно работать с инструментами.
+- [Документация инструментов](https://huggingface.co/docs/smolagents/v1.8.1/en/reference/tools) — подробный справочник.
+- [Пошаговое знакомство с инструментами](https://huggingface.co/docs/smolagents/v1.8.1/en/guided_tour#tools) — создание и использование инструментов.
+- [Создание эффективных агентов](https://huggingface.co/docs/smolagents/tutorials/building_good_agents) — подробное руководство по разработке надёжных и производительных агентов с собственными функциями.

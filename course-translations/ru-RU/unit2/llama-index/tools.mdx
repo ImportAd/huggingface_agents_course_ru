@@ -1,0 +1,142 @@
+# Используем инструменты в LlamaIndex [[using-tools-in-llamaindex]]
+
+**Чёткое описание набора инструментов критически важно для качества работы.** Как мы обсуждали в [разделе 1](../../unit1/tools), LLM проще пользоваться понятными интерфейсами.
+Здесь всё как с программным API для разработчика: если понятно, как работает инструмент, из него легче извлечь пользу.
+
+В LlamaIndex есть **четыре основных типа инструментов**:
+
+![Инструменты](https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit2/llama-index/tools.png)
+
+1. `FunctionTool`: превращает любую функцию Python в инструмент для агента, автоматически извлекая информацию о её интерфейсе.
+2. `QueryEngineTool`: позволяет агентам пользоваться query engines. Поскольку агенты построены на query engines, другие агенты также могут выступать инструментами.
+3. `Toolspecs`: наборы инструментов сообщества, часто предназначенные для конкретных сервисов, например Gmail.
+4. `Utility Tools`: вспомогательные инструменты для работы с большими объёмами данных, полученными от других инструментов.
+
+Ниже мы подробнее рассмотрим каждый вариант.
+
+## Создаём FunctionTool [[creating-a-functiontool]]
+
+> [!TIP]
+> Код урока доступен в <a href="https://huggingface.co/agents-course/notebooks/blob/main/unit2/llama-index/tools.ipynb" target="_blank">этом блокноте</a>, который можно запустить в Google Colab.
+
+FunctionTool позволяет легко обернуть любую функцию Python и сделать её доступной агенту.
+Можно передать синхронную или асинхронную функцию, а также необязательные параметры `name` и `description`.
+Имя и описание особенно важны: они помогают агенту понять, когда и как эффективно применять инструмент.
+Посмотрим, как создать FunctionTool и вызвать его.
+
+```python
+from llama_index.core.tools import FunctionTool
+
+def get_weather(location: str) -> str:
+    """Useful for getting the weather for a given location."""
+    print(f"Getting weather for {location}")
+    return f"The weather in {location} is sunny"
+
+tool = FunctionTool.from_defaults(
+    get_weather,
+    name="my_weather_tool",
+    description="Useful for getting the weather for a given location.",
+)
+tool.call("New York")
+```
+
+> [!TIP]
+> При использовании агента или LLM с поддержкой вызова функций выбор инструмента и его аргументов сильно зависит от имени, описания назначения и описаний аргументов. Подробнее — в <a href="https://docs.llamaindex.ai/en/stable/examples/workflow/function_calling_agent/">руководстве по вызову функций</a>.
+
+## Создаём QueryEngineTool [[creating-a-queryenginetool]]
+
+`QueryEngine` из предыдущего урока легко превратить в инструмент через класс `QueryEngineTool`.
+Посмотрим на пример.
+
+```python
+from llama_index.core import VectorStoreIndex
+from llama_index.core.tools import QueryEngineTool
+from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.vector_stores.chroma import ChromaVectorStore
+
+embed_model = HuggingFaceEmbedding("BAAI/bge-small-en-v1.5")
+
+db = chromadb.PersistentClient(path="./alfred_chroma_db")
+chroma_collection = db.get_or_create_collection("alfred")
+vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+index = VectorStoreIndex.from_vector_store(vector_store, embed_model=embed_model)
+
+llm = HuggingFaceInferenceAPI(model_name="Qwen/Qwen2.5-Coder-32B-Instruct")
+query_engine = index.as_query_engine(llm=llm)
+tool = QueryEngineTool.from_defaults(query_engine, name="some useful name", description="some useful description")
+```
+
+## Создаём ToolSpecs [[creating-toolspecs]]
+
+Представляйте `ToolSpecs` как хорошо организованные наборы согласованно работающих инструментов.
+Как инструменты механика дополняют друг друга при ремонте автомобиля, так и `ToolSpec` объединяет связанные возможности для конкретных задач.
+Например, `ToolSpec` агента-бухгалтера может объединять работу с таблицами, электронной почтой и вычислениями, чтобы точно и эффективно решать финансовые задачи.
+
+<details>
+<summary>Установка Google ToolSpec</summary>
+Как мы узнали в <a href="./llama-hub">уроке о LlamaHub</a>, Google ToolSpec можно установить командой:
+
+```python
+pip install llama-index-tools-google
+```
+</details>
+
+Теперь загрузим ToolSpec и преобразуем его в список инструментов.
+
+```python
+from llama_index.tools.google import GmailToolSpec
+
+tool_spec = GmailToolSpec()
+tool_spec_list = tool_spec.to_tool_list()
+```
+
+Чтобы подробнее изучить инструменты, посмотрим на `metadata` каждого из них.
+
+```python
+[(tool.metadata.name, tool.metadata.description) for tool in tool_spec_list]
+```
+
+### Model Context Protocol (MCP) в LlamaIndex [[model-context-protocol-mcp-in-llamaindex]]
+
+LlamaIndex также поддерживает инструменты MCP через [ToolSpec на LlamaHub](https://llamahub.ai/l/tools/llama-index-tools-mcp?from=).
+Достаточно запустить MCP-сервер и подключить его следующим образом.
+
+Если хотите глубже разобраться в MCP, загляните в наш [бесплатный курс по MCP](https://huggingface.co/learn/mcp-course/).
+
+<details>
+<summary>Установка MCP ToolSpec</summary>
+Как и в <a href="./llama-hub">уроке о LlamaHub</a>, установим MCP ToolSpec командой:
+
+```python
+pip install llama-index-tools-mcp
+```
+</details>
+
+```python
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+# We consider there is a mcp server running on 127.0.0.1:8000, or you can use the mcp client to connect to your own mcp server.
+mcp_client = BasicMCPClient("http://127.0.0.1:8000/sse")
+mcp_tool = McpToolSpec(client=mcp_client)
+
+# get the agent
+agent = await get_agent(mcp_tool)
+
+# create the agent context
+agent_context = Context(agent)
+```
+
+## Вспомогательные инструменты [[utility-tools]]
+
+Прямой запрос к API нередко **возвращает слишком много данных**. Часть из них может быть несущественной, переполнять контекстное окно LLM или без необходимости увеличивать расход токенов.
+Рассмотрим два основных вспомогательных инструмента.
+
+1. `OnDemandToolLoader`: превращает любой существующий загрузчик LlamaIndex на основе `BaseReader` в инструмент для агента. При вызове передаются все параметры, необходимые для `load_data`, а также запрос на естественном языке. Сначала инструмент загружает данные, затем индексирует их — например, в векторном хранилище — и выполняет запрос к ним «по требованию». Все три этапа происходят за один вызов инструмента.
+2. `LoadAndSearchToolSpec`: принимает любой существующий `Tool`. Как и другие ToolSpecs, он реализует `to_tool_list`; этот метод возвращает два инструмента — загрузки и поиска. Инструмент загрузки вызывает исходный инструмент и индексирует результат, по умолчанию векторным индексом. Инструмент поиска принимает строку запроса и обращается к этому индексу.
+
+> [!TIP]
+> ToolSpecs и вспомогательные инструменты можно найти на <a href="https://llamahub.ai/">LlamaHub</a>.
+
+Мы разобрались с основами агентов и инструментов LlamaIndex. Теперь посмотрим, как **создавать настраиваемые и управляемые рабочие процессы!**

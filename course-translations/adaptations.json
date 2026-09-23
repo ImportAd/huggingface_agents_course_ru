@@ -1,0 +1,67 @@
+{
+  "language": "ru-RU",
+  "kind": "locally-adapted-official-translation",
+  "sourceRevision": "b3946b1d09d29c65736e219d48a8a736a2c52154",
+  "lessons": {
+    "unit0/introduction": {
+      "sourceSha256": "def40186701c2c756354d9c8f4e53ed69d81c4f32fc1c7cdbb05b538a8cc684d",
+      "translationSha256": "17041efbe0aef7b07c52bcf3560b1ed3274fba2bc7870f630ac94fbfc4162cf8",
+      "translatedAt": "2026-09-23"
+    },
+    "unit0/onboarding": {
+      "sourceSha256": "74fedd0c9692ccafc843aa40c0318b0c21b138d40243276c6002e155d0c08c3a",
+      "translationSha256": "6d4fd25511f409850246de8da0f8b02806f874b48045af704054166531d25d27",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/actions": {
+      "sourceSha256": "fd9a9a0d318d1c3a7fd654ac17e1da5dcab2e4f6255c8244959386996b7a54a6",
+      "translationSha256": "e159b481339802a4d5f69959ef16775b8bd1b5cfbf4b98abd059333a15ac9a3c",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/conclusion": {
+      "sourceSha256": "eb4dc1c17e9736888864ba846780bdb87cde21bbdc765d9dd3d89568279b5ca4",
+      "translationSha256": "4059bffe561d7339f2d71c03843c46e55c5711a223877fcb09740237ad2a70e9",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/dummy-agent-library": {
+      "sourceSha256": "c273c1de77cb4ae568723ece4f719c434c6357a029825c024b3ff22cee9a2f07",
+      "translationSha256": "c76d54e2f9ad08d8c14ea2e7d5a5e9edd095761fb4686aac3a8acc64f706aa31",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/final-quiz": {
+      "sourceSha256": "21ffe46abf303abce53662d4ba17a9fe38b9f02ce4244052b858877ee7e335cd",
+      "translationSha256": "3fc1b6ddc57458a0e00b8e4f8243b27deacf4d5133bb1f06a1517110a7f857de",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/introduction": {
+      "sourceSha256": "187be9f6c7749de991b6e0587160889d16aa2b0c5d8d87d4444ed00889ffcbb9",
+      "translationSha256": "455d000665aabaa36cefd6b604c0c9d942942df01ef5724a1bce321772820fad",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/thoughts": {
+      "sourceSha256": "f25ea8f61fe5558632f57fb93afaa93dceb0bc1b200bb31ed0ebd5207b70f7ee",
+      "translationSha256": "2747e59194ca2f2582e9a554426cf04428f19af193a210af2514c9c63bca0cc9",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/tools": {
+      "sourceSha256": "8f7a37f489d06160b26126af79d66f8ef89309926bca2d62e597461d076a8d96",
+      "translationSha256": "71eb02e73b2e873abe0f84968d6dfb88ed469c605d9c6ef14fa6ef9b083f00e1",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/tutorial": {
+      "sourceSha256": "fefdb393242caef430ef461008f31e25da6ab9db4f1cded9dfff339bc8f92d06",
+      "translationSha256": "245f207a5c5a3d960f7189bb520cca48033e6ee82123cf3623fb1c236d9ee302",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/what-are-agents": {
+      "sourceSha256": "4f8689016f0c5a0cb1032f2c46121ca663249a3eb5b7825e2f2b1eeaa77ea791",
+      "translationSha256": "731dc2b242756849e593c65f5017b2875c3bd3d4a6196316617cbb74b682ebba",
+      "translatedAt": "2026-09-23"
+    },
+    "unit1/what-are-llms": {
+      "sourceSha256": "749340385be9b1d8dbef1dea56a21ab0406d6a790074dec93ba67b191d56d1e2",
+      "translationSha256": "7778d8290ba7b2c9e29466f81ff58c1471976b2206ad3eb09679a2ec95604d41",
+      "translatedAt": "2026-09-23"
+    }
+  }
+}

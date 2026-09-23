@@ -1,0 +1,267 @@
+# Граф анализа документов [[document-analysis-graph]]
+
+Альфред к вашим услугам. Как верный дворецкий мистера Уэйна, я позволил себе описать, как помогаю ему с разнообразными документами. Пока он занимается своими… ночными делами, я слежу за тем, чтобы все бумаги, расписания тренировок и планы питания были должным образом проанализированы и приведены в порядок.
+
+Перед уходом он оставил записку с программой тренировок на неделю. Я взял на себя составление **меню** на завтра.
+
+Чтобы в дальнейшем решать подобные задачи, создадим систему анализа документов на LangGraph для нужд мистера Уэйна. Она сможет:
+
+1. Обрабатывать изображения документов.
+2. Извлекать текст с помощью визуально-языковых моделей — Vision Language Models.
+3. При необходимости выполнять вычисления, демонстрируя работу обычных инструментов.
+4. Анализировать содержимое и готовить краткие сводки.
+5. Выполнять конкретные инструкции, связанные с документами.
+
+## Рабочий процесс дворецкого [[the-butlers-workflow]]
+
+Наш процесс будет следовать такой схеме:
+
+![Рабочий процесс анализа документов дворецким](https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit2/LangGraph/alfred_flow.png)
+
+> [!TIP]
+> Код урока доступен в <a href="https://huggingface.co/agents-course/notebooks/blob/main/unit2/langgraph/agent.ipynb" target="_blank">этом блокноте</a>, который можно запустить в Google Colab.
+
+## Подготовка окружения [[setting-up-the-environment]]
+
+```python
+%pip install langgraph langchain_openai langchain_core
+```
+И необходимые импорты:
+```python
+import base64
+from typing import List, TypedDict, Annotated, Optional
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage
+from langgraph.graph.message import add_messages
+from langgraph.graph import START, StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
+from IPython.display import Image, display
+```
+
+## Определяем состояние агента [[defining-agents-state]]
+
+Это состояние немного сложнее предыдущих примеров.
+`AnyMessage` — тип сообщений из LangChain, а `add_messages` — оператор, который добавляет новые сообщения вместо того, чтобы заменять ими всю предыдущую историю в состоянии.
+
+Это новая для нас возможность LangGraph: в описании состояния можно задавать операторы, определяющие, как объединяются обновления его полей.
+
+```python
+class AgentState(TypedDict):
+    # The document provided
+    input_file: Optional[str]  # Contains file path (PDF/PNG)
+    messages: Annotated[list[AnyMessage], add_messages]
+```
+
+## Подготавливаем инструменты [[preparing-tools]]
+
+```python
+vision_llm = ChatOpenAI(model="gpt-4o")
+
+def extract_text(img_path: str) -> str:
+    """
+    Extract text from an image file using a multimodal model.
+    
+    Master Wayne often leaves notes with his training regimen or meal plans.
+    This allows me to properly analyze the contents.
+    """
+    all_text = ""
+    try:
+        # Read image and encode as base64
+        with open(img_path, "rb") as image_file:
+            image_bytes = image_file.read()
+
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+        # Prepare the prompt including the base64 image data
+        message = [
+            HumanMessage(
+                content=[
+                    {
+                        "type": "text",
+                        "text": (
+                            "Extract all the text from this image. "
+                            "Return only the extracted text, no explanations."
+                        ),
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{image_base64}"
+                        },
+                    },
+                ]
+            )
+        ]
+
+        # Call the vision-capable model
+        response = vision_llm.invoke(message)
+
+        # Append extracted text
+        all_text += response.content + "\n\n"
+
+        return all_text.strip()
+    except Exception as e:
+        # A butler should handle errors gracefully
+        error_msg = f"Error extracting text: {str(e)}"
+        print(error_msg)
+        return ""
+
+def divide(a: int, b: int) -> float:
+    """Divide a and b - for Master Wayne's occasional calculations."""
+    return a / b
+
+# Equip the butler with tools
+tools = [
+    divide,
+    extract_text
+]
+
+llm = ChatOpenAI(model="gpt-4o")
+llm_with_tools = llm.bind_tools(tools, parallel_tool_calls=False)
+```
+
+## Узлы [[the-nodes]]
+
+```python
+def assistant(state: AgentState):
+    # System message
+    textual_description_of_tool="""
+extract_text(img_path: str) -> str:
+    Extract text from an image file using a multimodal model.
+
+    Args:
+        img_path: A local image file path (strings).
+
+    Returns:
+        A single string containing the concatenated text extracted from each image.
+divide(a: int, b: int) -> float:
+    Divide a and b
+"""
+    image=state["input_file"]
+    sys_msg = SystemMessage(content=f"You are a helpful butler named Alfred that serves Mr. Wayne and Batman. You can analyse documents and run computations with provided tools:\n{textual_description_of_tool} \n You have access to some optional images. Currently the loaded image is: {image}")
+
+    return {
+        "messages": [llm_with_tools.invoke([sys_msg] + state["messages"])],
+        "input_file": state["input_file"]
+    }
+```
+
+## Подход ReAct: как я помогаю мистеру Уэйну [[the-react-pattern-how-i-assist-mr-wayne]]
+
+Позвольте объяснить устройство этого агента. Он следует подходу ReAct — «Рассуждение — Действие — Наблюдение»:
+
+1. **Рассуждает** о документах и запросах мистера Уэйна.
+2. **Действует**, используя подходящие инструменты.
+3. **Наблюдает** за результатами.
+4. **Повторяет** цикл по необходимости, пока я не выполню его просьбу полностью.
+
+Это простая реализация агента на LangGraph.
+
+```python
+# The graph
+builder = StateGraph(AgentState)
+
+# Define nodes: these do the work
+builder.add_node("assistant", assistant)
+builder.add_node("tools", ToolNode(tools))
+
+# Define edges: these determine how the control flow moves
+builder.add_edge(START, "assistant")
+builder.add_conditional_edges(
+    "assistant",
+    # If the latest message requires a tool, route to tools
+    # Otherwise, provide a direct response
+    tools_condition,
+)
+builder.add_edge("tools", "assistant")
+react_graph = builder.compile()
+
+# Show the butler's thought process
+display(Image(react_graph.get_graph(xray=True).draw_mermaid_png()))
+```
+
+Мы определяем узел `tools` со списком инструментов. Узел `assistant` — наша модель с подключёнными инструментами.
+Создаём граф из этих двух узлов.
+
+Добавляем условный переход `tools_condition`, который направляет выполнение к `End` или `tools` в зависимости от того, вызывает ли `assistant` инструмент.
+
+Теперь новый шаг:
+
+Соединяем `tools` обратно с `assistant`, образуя цикл.
+
+- После выполнения `assistant` функция `tools_condition` проверяет, содержит ли вывод модели вызов инструмента.
+- Если да, управление переходит в узел `tools`.
+- Из `tools` выполнение возвращается в `assistant`.
+- Цикл продолжается, пока модель решает вызывать инструменты.
+- Если ответ модели не является вызовом инструмента, управление переходит к END и процесс завершается.
+
+![Схема ReAct](https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit2/LangGraph/Agent.png)
+
+## Дворецкий за работой [[the-butler-in-action]]
+
+### Пример 1. Простые вычисления [[example-1-simple-calculations]]
+
+Вот простой пример агента, использующего инструмент в LangGraph.
+
+```python
+messages = [HumanMessage(content="Divide 6790 by 5")]
+messages = react_graph.invoke({"messages": messages, "input_file": None})
+
+# Show the messages
+for m in messages['messages']:
+    m.pretty_print()
+```
+
+Диалог будет выглядеть так:
+
+```
+Human: Divide 6790 by 5
+
+AI Tool Call: divide(a=6790, b=5)
+
+Tool Response: 1358.0
+
+Alfred: The result of dividing 6790 by 5 is 1358.0.
+```
+
+### Пример 2. Анализируем документы о тренировках молодого господина Уэйна [[example-2-analyzing-master-waynes-training-documents]]
+
+Когда молодой господин Уэйн оставляет заметки о тренировках и питании:
+
+```python
+messages = [HumanMessage(content="According to the note provided by Mr. Wayne in the provided images. What's the list of items I should buy for the dinner menu?")]
+messages = react_graph.invoke({"messages": messages, "input_file": "Batman_training_and_meals.png"})
+```
+
+Взаимодействие выглядит следующим образом:
+
+```
+Human: According to the note provided by Mr. Wayne in the provided images. What's the list of items I should buy for the dinner menu?
+
+AI Tool Call: extract_text(img_path="Batman_training_and_meals.png")
+
+Tool Response: [Extracted text with training schedule and menu details]
+
+Alfred: For the dinner menu, you should buy the following items:
+
+1. Grass-fed local sirloin steak
+2. Organic spinach
+3. Piquillo peppers
+4. Potatoes (for oven-baked golden herb potato)
+5. Fish oil (2 grams)
+
+Ensure the steak is grass-fed and the spinach and peppers are organic for the best quality meal.
+```
+
+## Основные выводы [[key-takeaways]]
+
+Если вы захотите создать собственного дворецкого для анализа документов, учтите следующее:
+
+1. **Чётко определите инструменты** для конкретных задач с документами.
+2. **Создайте надёжное управление состоянием**, чтобы сохранять контекст между вызовами инструментов.
+3. **Продумайте обработку ошибок** на случай сбоев инструментов.
+4. **Сохраняйте контекст предыдущих взаимодействий** — здесь за это отвечает `add_messages`.
+
+Следуя этим принципам, вы тоже сможете организовать образцовый анализ документов, достойный поместья Уэйнов.
+
+*Надеюсь, мои объяснения вас удовлетворили. А теперь, с вашего позволения, мне нужно погладить плащ молодого господина Уэйна перед его сегодняшними ночными делами.*

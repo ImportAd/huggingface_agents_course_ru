@@ -1,0 +1,280 @@
+# Создаём агентные рабочие процессы в LlamaIndex [[creating-agentic-workflows-in-llamaindex]]
+
+Workflow в LlamaIndex — структурированный способ организовать код в последовательность управляемых шагов.
+
+Вы определяете шаги `Steps`, которые запускаются событиями `Events` и сами создают события для запуска следующих шагов.
+Посмотрим, как Альфред демонстрирует рабочий процесс LlamaIndex для задачи RAG.
+
+![Схема рабочего процесса](https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit2/llama-index/workflows.png)
+
+**У Workflows есть несколько важных преимуществ:**
+
+- Понятное разделение кода на отдельные шаги.
+- Событийная архитектура с гибким управлением потоком выполнения.
+- Типобезопасная передача данных между шагами.
+- Встроенное управление состоянием.
+- Поддержка как простых, так и сложных взаимодействий агентов.
+
+Как вы, вероятно, уже догадались, **Workflows позволяют сочетать автономность агентов с контролем над процессом в целом**.
+
+Давайте научимся создавать такие процессы!
+
+## Создание Workflows [[creating-workflows]]
+
+> [!TIP]
+> Код урока доступен в <a href="https://huggingface.co/agents-course/notebooks/blob/main/unit2/llama-index/workflows.ipynb" target="_blank">этом блокноте</a>, который можно запустить в Google Colab.
+
+### Простой рабочий процесс [[basic-workflow-creation]]
+
+<details>
+<summary>Установка пакета Workflow</summary>
+Как мы узнали в <a href="./llama-hub">уроке о LlamaHub</a>, пакет Workflow можно установить командой:
+
+```python
+pip install llama-index-utils-workflow
+```
+</details>
+
+Чтобы создать процесс из одного шага, определим класс, наследующий `Workflow`, и добавим к функциям декоратор `@step`.
+Также понадобятся специальные события `StartEvent` и `StopEvent`, обозначающие начало и конец процесса.
+
+```python
+from llama_index.core.workflow import StartEvent, StopEvent, Workflow, step
+
+class MyWorkflow(Workflow):
+    @step
+    async def my_step(self, ev: StartEvent) -> StopEvent:
+        # do something here
+        return StopEvent(result="Hello, world!")
+
+
+w = MyWorkflow(timeout=10, verbose=False)
+result = await w.run()
+```
+
+Теперь процесс можно запустить вызовом `w.run()`.
+
+### Соединяем несколько шагов [[connecting-multiple-steps]]
+
+Чтобы связать несколько шагов, **создадим собственные события, передающие данные между ними**.
+Добавим `Event`, который перенесёт результат первого шага во второй.
+
+```python
+from llama_index.core.workflow import Event
+
+class ProcessingEvent(Event):
+    intermediate_result: str
+
+class MultiStepWorkflow(Workflow):
+    @step
+    async def step_one(self, ev: StartEvent) -> ProcessingEvent:
+        # Process initial data
+        return ProcessingEvent(intermediate_result="Step 1 complete")
+
+    @step
+    async def step_two(self, ev: ProcessingEvent) -> StopEvent:
+        # Use the intermediate result
+        final_result = f"Finished processing: {ev.intermediate_result}"
+        return StopEvent(result=final_result)
+
+w = MultiStepWorkflow(timeout=10, verbose=False)
+result = await w.run()
+result
+```
+
+Аннотации типов здесь важны: от них зависит правильное выполнение процесса. Немного усложним пример!
+
+### Циклы и ветвления [[loops-and-branches]]
+
+Аннотации типов — одна из самых мощных возможностей Workflows: они позволяют создавать ветвления, циклы и объединения ветвей для более сложных процессов.
+
+Покажем, как **создать цикл** с помощью оператора объединения типов `|`.
+В примере ниже шаг принимает `LoopEvent` и может вернуть событие того же типа.
+
+```python
+from llama_index.core.workflow import Event
+import random
+
+
+class ProcessingEvent(Event):
+    intermediate_result: str
+
+
+class LoopEvent(Event):
+    loop_output: str
+
+
+class MultiStepWorkflow(Workflow):
+    @step
+    async def step_one(self, ev: StartEvent | LoopEvent) -> ProcessingEvent | LoopEvent:
+        if random.randint(0, 1) == 0:
+            print("Bad thing happened")
+            return LoopEvent(loop_output="Back to step one.")
+        else:
+            print("Good thing happened")
+            return ProcessingEvent(intermediate_result="First step complete.")
+
+    @step
+    async def step_two(self, ev: ProcessingEvent) -> StopEvent:
+        # Use the intermediate result
+        final_result = f"Finished processing: {ev.intermediate_result}"
+        return StopEvent(result=final_result)
+
+
+w = MultiStepWorkflow(verbose=False)
+result = await w.run()
+result
+```
+
+### Визуализируем рабочие процессы [[drawing-workflows]]
+
+Рабочий процесс можно изобразить на схеме. Используем функцию `draw_all_possible_flows`: она сохранит визуализацию в HTML-файл.
+
+```python
+from llama_index.utils.workflow import draw_all_possible_flows
+
+w = ... # as defined in the previous section
+draw_all_possible_flows(w, "flow.html")
+```
+
+![Схема рабочего процесса](https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit2/llama-index/workflow-draw.png)
+
+Осталась ещё одна полезная возможность, которую мы рассмотрим в курсе: добавление состояния.
+
+### Управление состоянием [[state-management]]
+
+Управление состоянием полезно, когда нужно отслеживать ход процесса и давать каждому шагу доступ к одним и тем же данным.
+Для этого добавим параметр функции шага с аннотацией типа `Context`.
+
+```python
+from llama_index.core.workflow import Context, StartEvent, StopEvent
+
+
+@step
+async def query(self, ctx: Context, ev: StartEvent) -> StopEvent:
+    # store query in the context
+    await ctx.store.set("query", "What is the capital of France?")
+
+    # do something with context and event
+    val = ...
+
+    # retrieve query from the context
+    query = await ctx.store.get("query")
+
+    return StopEvent(result=val)
+```
+
+Отлично! Теперь вы умеете создавать простые рабочие процессы в LlamaIndex!
+
+> [!TIP]
+> Более сложные особенности Workflows описаны в <a href="https://docs.llamaindex.ai/en/stable/understanding/workflows/">документации LlamaIndex</a>.
+
+Но есть и другой способ создания процессов — через класс `AgentWorkflow`. Посмотрим, как построить с ним мультиагентный процесс.
+
+## Автоматизируем процессы с Multi-Agent Workflows [[automating-workflows-with-multi-agent-workflows]]
+
+Вместо ручного описания процесса можно использовать **класс `AgentWorkflow` для создания мультиагентного рабочего процесса**.
+`AgentWorkflow` использует Workflow Agents и позволяет объединить одного или нескольких агентов, которые совместно работают и передают задачи друг другу в соответствии со специализацией.
+Так можно строить сложные системы, где разные агенты отвечают за разные стороны задачи.
+Вместо `llama_index.core.agent` импортируем классы агентов из `llama_index.core.agent.workflow`.
+В конструкторе `AgentWorkflow` один агент должен быть назначен корневым.
+Именно ему первым поступает сообщение пользователя.
+
+Затем каждый агент может:
+
+- Обработать запрос самостоятельно с помощью своих инструментов.
+- Передать управление агенту, который лучше подходит для задачи.
+- Вернуть ответ пользователю.
+
+Посмотрим, как создать такой процесс.
+
+```python
+from llama_index.core.agent.workflow import AgentWorkflow, ReActAgent
+from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI
+
+# Define some tools
+def add(a: int, b: int) -> int:
+    """Add two numbers."""
+    return a + b
+
+def multiply(a: int, b: int) -> int:
+    """Multiply two numbers."""
+    return a * b
+
+llm = HuggingFaceInferenceAPI(model_name="Qwen/Qwen2.5-Coder-32B-Instruct")
+
+# we can pass functions directly without FunctionTool -- the fn/docstring are parsed for the name/description
+multiply_agent = ReActAgent(
+    name="multiply_agent",
+    description="Is able to multiply two integers",
+    system_prompt="A helpful assistant that can use a tool to multiply numbers.",
+    tools=[multiply],
+    llm=llm,
+)
+
+addition_agent = ReActAgent(
+    name="add_agent",
+    description="Is able to add two integers",
+    system_prompt="A helpful assistant that can use a tool to add numbers.",
+    tools=[add],
+    llm=llm,
+)
+
+# Create the workflow
+workflow = AgentWorkflow(
+    agents=[multiply_agent, addition_agent],
+    root_agent="multiply_agent",
+)
+
+# Run the system
+response = await workflow.run(user_msg="Can you add 5 and 3?")
+```
+
+Инструменты агентов тоже могут менять состояние процесса, о котором мы говорили выше. Перед запуском можно передать словарь начального состояния, доступный всем агентам.
+Он хранится под ключом state в контексте процесса и подставляется в state_prompt, который дополняет каждое новое сообщение пользователя.
+
+Изменим предыдущий пример и добавим счётчик вызовов функций:
+
+```python
+from llama_index.core.workflow import Context
+
+# Define some tools
+async def add(ctx: Context, a: int, b: int) -> int:
+    """Add two numbers."""
+    # update our count
+    cur_state = await ctx.store.get("state")
+    cur_state["num_fn_calls"] += 1
+    await ctx.store.set("state", cur_state)
+
+    return a + b
+
+async def multiply(ctx: Context, a: int, b: int) -> int:
+    """Multiply two numbers."""
+    # update our count
+    cur_state = await ctx.store.get("state")
+    cur_state["num_fn_calls"] += 1
+    await ctx.store.set("state", cur_state)
+
+    return a * b
+
+...
+
+workflow = AgentWorkflow(
+    agents=[multiply_agent, addition_agent],
+    root_agent="multiply_agent",
+    initial_state={"num_fn_calls": 0},
+    state_prompt="Current state: {state}. User message: {msg}",
+)
+
+# run the workflow with context
+ctx = Context(workflow)
+response = await workflow.run(user_msg="Can you add 5 and 3?", ctx=ctx)
+
+# pull out and inspect the state
+state = await ctx.store.get("state")
+print(state["num_fn_calls"])
+```
+
+Поздравляем! Вы освоили основы агентов в LlamaIndex! 🎉
+
+Закрепим знания ещё одним заключительным тестом! 🚀

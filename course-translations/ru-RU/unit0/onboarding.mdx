@@ -1,0 +1,42 @@
+# Подготовка к курсу: первые шаги ⛵ [[onboarding-your-first-steps]]
+
+<img src="https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit0/time-to-onboard.jpg" alt="Пора начать обучение" width="100%"/>
+
+Теперь, когда вы познакомились с курсом, можно приступать. Для чтения локальной версии учётная запись Hugging Face не нужна. Если хотите участвовать в сообществе и проходить внешние задания, выполните первые четыре шага. Пятый подготовит сервер к нашему упражнению с локальным агентом.
+
+### Шаг 1. Создайте учётную запись Hugging Face
+
+Если у вас ещё нет учётной записи, её можно создать [здесь](https://huggingface.co/join). Она пригодится для Hub и внешних заданий курса. Локальному агенту из раздела 1 она не требуется.
+
+### Шаг 2. Присоединитесь к сообществу в Discord
+
+👉🏻 [Ссылка на сервер Discord](https://discord.gg/UrrTSsSyjb). Представьтесь в канале `#introduce-yourself`. В канале `courses` раздела `Hugging Face Hub` можно обсудить вопросы по курсу. Если Discord для вас нов, загляните в [краткое руководство](discord101).
+
+### Шаг 3. Подпишитесь на организацию курса
+
+Чтобы узнавать об обновлениях, зайдите на [страницу Hugging Face Agents Course](https://huggingface.co/agents-course) и нажмите **Follow**.
+
+<img src="https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/communication/hf_course_follow.gif" alt="Подписка на организацию курса" width="100%"/>
+
+### Шаг 4. Расскажите о курсе
+
+Если хотите поддержать проект, поставьте ⭐ [репозиторию курса](https://github.com/huggingface/agents-course) или поделитесь своим учебным опытом. Авторы подготовили для публикации [иллюстрацию](https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/communication/share.png?download=true).
+
+### Шаг 5. Подготовьте локальную модель на Ubuntu [[run-models-locally]]
+
+В английский урок добавлен раздел о запуске моделей через Ollama при ограничениях облачного инференса; в старом русском переводе его не было. Мы используем эту возможность как **основной путь** для первого практического задания.
+
+Установите Ollama по [официальной инструкции для Linux](https://docs.ollama.com/linux). Для Ubuntu команда установки выглядит так:
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+sudo systemctl status ollama --no-pager
+ollama pull qwen3:4b-instruct
+curl http://127.0.0.1:11434/api/tags
+```
+
+Модель [`qwen3:4b-instruct`](https://ollama.com/library/qwen3:4b-instruct) поддерживает вызов инструментов и занимает около 2,5 ГБ на диске. `curl` в последней строке проверяет, что локальный сервер Ollama отвечает и модель загружена. Если сервис не создан при ручной установке, выполните `ollama serve` в отдельном терминале. Если порт уже занят Ollama, второй экземпляр запускать не нужно.
+
+В первом практическом уроке мы установим Python-библиотеки и создадим агента на LangGraph. Для чтения теории можно пока пропустить установку и вернуться к этому шагу позже.
+
+Готово! 🤗 Теперь вы можете перейти к основам ИИ-агентов.

@@ -1,0 +1,455 @@
+# Создаём RAG-инструмент для историй о гостях [[creating-a-rag-tool-for-guest-stories]]
+
+Ваш верный агент Альфред готовится к самому роскошному приёму столетия. Чтобы вечер прошёл гладко, ему нужен быстрый доступ к актуальной информации о каждом госте. Поможем ему: создадим собственный инструмент Retrieval-Augmented Generation (RAG) на основе нашего датасета.
+
+## Зачем RAG на приёме? [[why-rag-for-a-gala]]
+
+Представьте Альфреда среди гостей: в любую минуту ему может понадобиться вспомнить конкретные сведения о человеке. Обычной LLM будет непросто, потому что:
+
+1. Список гостей относится именно к вашему мероприятию и отсутствует в обучающих данных модели.
+2. Сведения о гостях могут часто меняться и обновляться.
+3. Альфреду нужны точные данные, например адреса электронной почты.
+
+Вот где полезен RAG! Объединив поисковую систему с LLM, мы дадим Альфреду доступ к точной и актуальной информации по мере необходимости.
+
+> [!TIP]
+> Вы можете использовать любой фреймворк из курса. Выберите подходящий вариант на вкладках с кодом.
+
+## Подготавливаем приложение [[setting-up-our-application]]
+
+В этом разделе мы создадим агента в HF Space как структурированный Python-проект. Разделение возможностей по файлам поможет сохранять код понятным и модульным. Такой подход также ближе к реальному сценарию, в котором приложение разворачивается для публичного использования.
+
+### Структура проекта [[project-structure]]
+
+- **`tools.py`** — вспомогательные инструменты агента.
+- **`retriever.py`** — функции поиска для доступа к знаниям.
+- **`app.py`** — объединение всех компонентов в работающего агента; этот файл мы завершим в конце раздела.
+
+Готовый пример Agentic RAG из этого раздела доступен в [этом HF Space](https://huggingface.co/spaces/agents-course/Unit_3_Agentic_RAG). Клонируйте его и экспериментируйте!
+
+Попробовать агента можно прямо здесь:
+
+<iframe
+	src="https://agents-course-unit-3-agentic-rag.hf.space"
+	frameborder="0"
+	width="850"
+	height="450"
+></iframe>
+
+## Обзор датасета [[dataset-overview]]
+
+Наш датасет [`agents-course/unit3-invitees`](https://huggingface.co/datasets/agents-course/unit3-invitees/) содержит следующие поля для каждого гостя:
+
+- **Name:** полное имя гостя.
+- **Relation:** как гость связан с хозяином.
+- **Description:** краткая биография или интересные факты.
+- **Email Address:** контакт для отправки приглашений и последующих сообщений.
+
+Ниже можно посмотреть датасет:
+<iframe
+  src="https://huggingface.co/datasets/agents-course/unit3-invitees/embed/viewer/default/train"
+  frameborder="0"
+  width="100%"
+  height="560px"
+></iframe>
+
+> [!TIP]
+> В реальном проекте датасет можно дополнить предпочтениями в еде, идеями подарков, нежелательными темами разговора и другими полезными для хозяина сведениями.
+
+## Создаём инструмент справочника гостей [[building-the-guestbook-tool]]
+
+Создадим инструмент, с помощью которого Альфред сможет быстро получать сведения о гостях во время приёма. Разобьём задачу на три шага:
+
+1. Загрузка и подготовка датасета.
+2. Создание инструмента поиска.
+3. Подключение инструмента к Альфреду.
+
+Начнём с данных!
+
+### Шаг 1. Загружаем и подготавливаем датасет [[step-1-load-and-prepare-the-dataset]]
+
+Сначала преобразуем исходные сведения о гостях в формат, удобный для поиска.
+
+<hfoptions id="agents-frameworks">
+<hfoption id="smolagents">
+
+Загрузим датасет библиотекой Hugging Face `datasets` и преобразуем его в список объектов `Document` из модуля `langchain.docstore.document`.
+
+```python
+import datasets
+from langchain_core.documents import Document
+
+# Load the dataset
+guest_dataset = datasets.load_dataset("agents-course/unit3-invitees", split="train")
+
+# Convert dataset entries into Document objects
+docs = [
+    Document(
+        page_content="\n".join([
+            f"Name: {guest['name']}",
+            f"Relation: {guest['relation']}",
+            f"Description: {guest['description']}",
+            f"Email: {guest['email']}"
+        ]),
+        metadata={"name": guest["name"]}
+    )
+    for guest in guest_dataset
+]
+
+```
+
+</hfoption>
+<hfoption id="llama-index">
+
+Загрузим датасет библиотекой Hugging Face `datasets` и преобразуем его в список объектов `Document` из модуля `llama_index.core.schema`.
+
+```python
+import datasets
+from llama_index.core.schema import Document
+
+# Load the dataset
+guest_dataset = datasets.load_dataset("agents-course/unit3-invitees", split="train")
+
+# Convert dataset entries into Document objects
+docs = [
+    Document(
+        text="\n".join([
+            f"Name: {guest_dataset['name'][i]}",
+            f"Relation: {guest_dataset['relation'][i]}",
+            f"Description: {guest_dataset['description'][i]}",
+            f"Email: {guest_dataset['email'][i]}"
+        ]),
+        metadata={"name": guest_dataset['name'][i]}
+    )
+    for i in range(len(guest_dataset))
+]
+```
+
+</hfoption>
+<hfoption id="langgraph">
+
+Загрузим датасет библиотекой Hugging Face `datasets` и преобразуем его в список объектов `Document` из модуля `langchain.docstore.document`.
+
+```python
+import datasets
+from langchain_core.documents import Document
+
+# Load the dataset
+guest_dataset = datasets.load_dataset("agents-course/unit3-invitees", split="train")
+
+# Convert dataset entries into Document objects
+docs = [
+    Document(
+        page_content="\n".join([
+            f"Name: {guest['name']}",
+            f"Relation: {guest['relation']}",
+            f"Description: {guest['description']}",
+            f"Email: {guest['email']}"
+        ]),
+        metadata={"name": guest["name"]}
+    )
+    for guest in guest_dataset
+]
+```
+
+</hfoption>
+</hfoptions>
+
+В этом коде мы:
+- Загружаем датасет.
+- Превращаем запись о каждом госте в объект `Document` с отформатированным содержимым.
+- Сохраняем объекты `Document` в списке.
+
+Все данные подготовлены — можно настраивать поиск.
+
+### Шаг 2. Создаём инструмент поиска [[step-2-create-the-retriever-tool]]
+
+Создадим собственный инструмент, которым Альфред будет пользоваться для поиска сведений о гостях.
+
+<hfoptions id="agents-frameworks">
+<hfoption id="smolagents">
+
+Для инструмента поиска используем `BM25Retriever` из модуля `langchain_community.retrievers`.
+
+> [!TIP]
+> <code>BM25Retriever</code> — хороший отправной вариант. Для более продвинутого семантического поиска можно рассмотреть решения на основе эмбеддингов, например из <a href="https://www.sbert.net/">sentence-transformers</a>.
+
+```python
+from smolagents import Tool
+from langchain_community.retrievers import BM25Retriever
+
+class GuestInfoRetrieverTool(Tool):
+    name = "guest_info_retriever"
+    description = "Retrieves detailed information about gala guests based on their name or relation."
+    inputs = {
+        "query": {
+            "type": "string",
+            "description": "The name or relation of the guest you want information about."
+        }
+    }
+    output_type = "string"
+
+    def __init__(self, docs):
+        self.is_initialized = False
+        self.retriever = BM25Retriever.from_documents(docs)
+
+    def forward(self, query: str):
+        results = self.retriever.invoke(query)
+        if results:
+            return "\n\n".join([doc.page_content for doc in results[:3]])
+        else:
+            return "No matching guest information found."
+
+# Initialize the tool
+guest_info_tool = GuestInfoRetrieverTool(docs)
+```
+
+Разберём устройство инструмента:
+- `name` и `description` помогают агенту понять, когда и как его использовать.
+- `inputs` описывает ожидаемые параметры — здесь это поисковый запрос.
+- `BM25Retriever` использует эффективный алгоритм текстового поиска, которому не нужны эмбеддинги.
+- Метод `forward` обрабатывает запрос и возвращает наиболее подходящие сведения о гостях.
+
+</hfoption>
+<hfoption id="llama-index">
+
+Для инструмента поиска используем `BM25Retriever` из модуля `llama_index.retrievers.bm25`.
+
+> [!TIP]
+> <code>BM25Retriever</code> — хороший отправной вариант. Для более продвинутого семантического поиска можно рассмотреть решения на основе эмбеддингов, например из <a href="https://www.sbert.net/">sentence-transformers</a>.
+
+```python
+from llama_index.core.tools import FunctionTool
+from llama_index.retrievers.bm25 import BM25Retriever
+
+bm25_retriever = BM25Retriever.from_defaults(nodes=docs)
+
+def get_guest_info_retriever(query: str) -> str:
+    """Retrieves detailed information about gala guests based on their name or relation."""
+    results = bm25_retriever.retrieve(query)
+    if results:
+        return "\n\n".join([doc.text for doc in results[:3]])
+    else:
+        return "No matching guest information found."
+
+# Initialize the tool
+guest_info_tool = FunctionTool.from_defaults(get_guest_info_retriever)
+```
+
+Разберём устройство инструмента:
+- Docstring помогает агенту понять, когда и как его использовать.
+- Аннотации типов описывают ожидаемые параметры — здесь это поисковый запрос.
+- `BM25Retriever` использует эффективный алгоритм текстового поиска, которому не нужны эмбеддинги.
+- Метод обрабатывает запрос и возвращает наиболее подходящие сведения о гостях.
+
+</hfoption>
+<hfoption id="langgraph">
+
+Для инструмента поиска используем `BM25Retriever` из модуля `langchain_community.retrievers`.
+
+> [!TIP]
+> <code>BM25Retriever</code> — хороший отправной вариант. Для более продвинутого семантического поиска можно рассмотреть решения на основе эмбеддингов, например из <a href="https://www.sbert.net/">sentence-transformers</a>.
+
+```python
+from langchain_community.retrievers import BM25Retriever
+from langchain_core.tools import Tool
+
+bm25_retriever = BM25Retriever.from_documents(docs)
+
+def extract_text(query: str) -> str:
+    """Retrieves detailed information about gala guests based on their name or relation."""
+    results = bm25_retriever.invoke(query)
+    if results:
+        return "\n\n".join([doc.page_content for doc in results[:3]])
+    else:
+        return "No matching guest information found."
+
+guest_info_tool = Tool(
+    name="guest_info_retriever",
+    func=extract_text,
+    description="Retrieves detailed information about gala guests based on their name or relation."
+)
+```
+
+Разберём устройство инструмента:
+- `name` и `description` помогают агенту понять, когда и как его использовать.
+- Аннотации типов описывают ожидаемые параметры — здесь это поисковый запрос.
+- `BM25Retriever` использует эффективный алгоритм текстового поиска, которому не нужны эмбеддинги.
+- Метод обрабатывает запрос и возвращает наиболее подходящие сведения о гостях.
+
+</hfoption>
+</hfoptions>
+
+### Шаг 3. Подключаем инструмент к Альфреду [[step-3-integrate-the-tool-with-alfred]]
+
+Объединим всё: создадим агента и дадим ему наш инструмент.
+
+<hfoptions id="agents-frameworks">
+<hfoption id="smolagents">
+
+```python
+from smolagents import CodeAgent, InferenceClientModel
+
+# Initialize the Hugging Face model
+model = InferenceClientModel()
+
+# Create Alfred, our gala agent, with the guest info tool
+alfred = CodeAgent(tools=[guest_info_tool], model=model)
+
+# Example query Alfred might receive during the gala
+response = alfred.run("Tell me about our guest named 'Lady Ada Lovelace'.")
+
+print("🎩 Alfred's Response:")
+print(response)
+```
+
+Ожидаемый вывод:
+
+```
+🎩 Alfred's Response:
+Based on the information I retrieved, Lady Ada Lovelace is an esteemed mathematician and friend. She is renowned for her pioneering work in mathematics and computing, often celebrated as the first computer programmer due to her work on Charles Babbage's Analytical Engine. Her email address is ada.lovelace@example.com.
+```
+
+На этом заключительном шаге мы:
+- Инициализируем модель Hugging Face через `InferenceClientModel`.
+- Создаём Альфреда как `CodeAgent`, способного выполнять Python-код для решения задач.
+- Просим его найти сведения о гостье по имени «Lady Ada Lovelace» — леди Аде Лавлейс.
+
+</hfoption>
+<hfoption id="llama-index">
+
+```python
+from llama_index.core.agent.workflow import AgentWorkflow
+from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI
+
+# Initialize the Hugging Face model
+llm = HuggingFaceInferenceAPI(model_name="Qwen/Qwen2.5-Coder-32B-Instruct")
+
+# Create Alfred, our gala agent, with the guest info tool
+alfred = AgentWorkflow.from_tools_or_functions(
+    [guest_info_tool],
+    llm=llm,
+)
+
+# Example query Alfred might receive during the gala
+response = await alfred.run("Tell me about our guest named 'Lady Ada Lovelace'.")
+
+print("🎩 Alfred's Response:")
+print(response)
+```
+
+Ожидаемый вывод:
+
+```
+🎩 Alfred's Response:
+Lady Ada Lovelace is an esteemed mathematician and friend, renowned for her pioneering work in mathematics and computing. She is celebrated as the first computer programmer due to her work on Charles Babbage's Analytical Engine. Her email is ada.lovelace@example.com.
+```
+
+На этом заключительном шаге мы:
+- Инициализируем модель Hugging Face через `HuggingFaceInferenceAPI`.
+- Создаём Альфреда как `AgentWorkflow`, включив только что созданный инструмент.
+- Просим его найти сведения о гостье по имени «Lady Ada Lovelace» — леди Аде Лавлейс.
+
+</hfoption>
+<hfoption id="langgraph">
+
+```python
+from typing import TypedDict, Annotated
+from langgraph.graph.message import add_messages
+from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
+from langgraph.prebuilt import ToolNode
+from langgraph.graph import START, StateGraph
+from langgraph.prebuilt import tools_condition
+from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
+
+# Generate the chat interface, including the tools
+llm = HuggingFaceEndpoint(
+    repo_id="Qwen/Qwen2.5-Coder-32B-Instruct",
+    huggingfacehub_api_token=HUGGINGFACEHUB_API_TOKEN,
+)
+
+chat = ChatHuggingFace(llm=llm, verbose=True)
+tools = [guest_info_tool]
+chat_with_tools = chat.bind_tools(tools)
+
+# Generate the AgentState and Agent graph
+class AgentState(TypedDict):
+    messages: Annotated[list[AnyMessage], add_messages]
+
+def assistant(state: AgentState):
+    return {
+        "messages": [chat_with_tools.invoke(state["messages"])],
+    }
+
+## The graph
+builder = StateGraph(AgentState)
+
+# Define nodes: these do the work
+builder.add_node("assistant", assistant)
+builder.add_node("tools", ToolNode(tools))
+
+# Define edges: these determine how the control flow moves
+builder.add_edge(START, "assistant")
+builder.add_conditional_edges(
+    "assistant",
+    # If the latest message requires a tool, route to tools
+    # Otherwise, provide a direct response
+    tools_condition,
+)
+builder.add_edge("tools", "assistant")
+alfred = builder.compile()
+
+messages = [HumanMessage(content="Tell me about our guest named 'Lady Ada Lovelace'.")]
+response = alfred.invoke({"messages": messages})
+
+print("🎩 Alfred's Response:")
+print(response['messages'][-1].content)
+```
+
+Ожидаемый вывод:
+
+```
+🎩 Alfred's Response:
+Lady Ada Lovelace is an esteemed mathematician and pioneer in computing, often celebrated as the first computer programmer due to her work on Charles Babbage's Analytical Engine.
+```
+
+На этом заключительном шаге мы:
+- Инициализируем модель Hugging Face через `HuggingFaceEndpoint`, создаём интерфейс чата и подключаем инструменты.
+- Создаём Альфреда как `StateGraph`, соединяющий два узла — `assistant` и `tools` — ребром.
+- Просим его найти сведения о гостье по имени «Lady Ada Lovelace» — леди Аде Лавлейс.
+
+</hfoption>
+</hfoptions>
+
+## Пример взаимодействия [[example-interaction]]
+
+Во время приёма разговор может выглядеть так:
+
+**Вы:** «Альфред, кто тот джентльмен, который беседует с послом?»
+
+**Альфред:** *быстро ищет в базе гостей* «Это доктор Никола Тесла, сэр. Ваш давний приятель по университету. Он недавно запатентовал новую систему беспроводной передачи энергии и будет рад обсудить её с вами. И помните: он очень любит голубей — отличная тема для светской беседы».
+
+```json
+{
+    "name": "Dr. Nikola Tesla",
+    "relation": "old friend from university days",  
+    "description": "Dr. Nikola Tesla is an old friend from your university days. He's recently patented a new wireless energy transmission system and would be delighted to discuss it with you. Just remember he's passionate about pigeons, so that might make for good small talk.",
+    "email": "nikola.tesla@gmail.com"
+}
+```
+
+## Развиваем решение дальше [[taking-it-further]]
+
+Теперь Альфред умеет искать информацию о гостях. Подумайте, как улучшить систему:
+
+1. **Усовершенствовать поиск**, используя более сложный подход, например [sentence-transformers](https://www.sbert.net/).
+2. **Добавить память разговора**, чтобы Альфред помнил предыдущие взаимодействия.
+3. **Подключить веб-поиск** для получения свежих сведений о незнакомых гостях.
+4. **Объединить несколько индексов**, чтобы получать более полную информацию из проверенных источников.
+
+Теперь у Альфреда есть всё необходимое, чтобы без труда отвечать на вопросы о гостях и сделать ваш приём самым изысканным и приятным событием столетия!
+
+> [!TIP]
+> Попробуйте расширить инструмент: пусть он также предлагает темы для начала разговора на основе интересов и биографии гостя. Как бы вы изменили его для этого?
+>
+> Когда закончите, поместите реализацию поиска гостей в файл <code>retriever.py</code>.

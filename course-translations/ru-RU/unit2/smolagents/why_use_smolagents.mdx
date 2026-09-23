@@ -1,0 +1,66 @@
+![Баннер smolagents](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/smolagents/license_to_call.png)
+# Зачем использовать smolagents [[why-use-smolagents]]
+
+В этом модуле мы рассмотрим преимущества и недостатки [smolagents](https://huggingface.co/docs/smolagents/en/index), чтобы вы могли понять, подходит ли этот фреймворк для ваших задач.
+
+## Что такое `smolagents`? [[what-is-smolagents]]
+
+`smolagents` — простой, но мощный фреймворк для создания ИИ-агентов. Он даёт LLM _способность действовать_ и взаимодействовать с реальным миром — например, выполнять поиск или генерировать изображения.
+
+Как мы узнали в разделе 1, ИИ-агенты — это программы, которые с помощью LLM формируют **«мысли»** на основе **«наблюдений»**, чтобы выполнять **«действия»**. Посмотрим, как это реализовано в smolagents.
+
+### Основные преимущества `smolagents` [[key-advantages-of-smolagents]]
+- **Простота:** минимум сложности в коде и абстракций — фреймворк легко понять, освоить и расширить.
+- **Гибкий выбор LLM:** работа с любой LLM благодаря интеграции с инструментами Hugging Face и внешними API.
+- **Ориентация на код:** полноценная поддержка Code Agents, которые записывают свои действия непосредственно в виде кода. Это устраняет необходимость разбирать промежуточное представление вызовов и упрощает использование инструментов.
+- **Интеграция с HF Hub:** удобное взаимодействие с Hugging Face Hub, включая использование Gradio Spaces в качестве инструментов.
+
+### Когда стоит использовать smolagents? [[when-to-use-smolagents]]
+
+Учитывая эти преимущества, в каких случаях стоит предпочесть smolagents другим фреймворкам?
+
+smolagents хорошо подходит, если:
+- Вам нужно **лёгкое и минималистичное решение**.
+- Вы хотите **быстро экспериментировать** без сложной настройки.
+- **Логика вашего приложения проста**.
+
+### Действия в виде кода и JSON [[code-vs-json-actions]]
+В отличие от фреймворков, в которых агенты записывают действия в JSON, `smolagents` **делает акцент на вызовах инструментов в коде**, упрощая их выполнение. Не нужно разбирать JSON, чтобы затем сформировать код вызова инструментов: вывод модели можно выполнить непосредственно.
+
+Следующая схема показывает это различие:
+
+![Действия в виде кода и JSON](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/code_vs_json_actions.png)
+
+Чтобы освежить в памяти разницу между действиями в коде и JSON, вернитесь к [уроку о действиях в разделе 1](https://huggingface.co/learn/agents-course/unit1/actions#actions-enabling-the-agent-to-engage-with-its-environment).
+
+### Типы агентов в `smolagents` [[agent-types-in-smolagents]]
+
+Агенты в `smolagents` работают как **многошаговые агенты**.
+
+На каждом шаге [`MultiStepAgent`](https://huggingface.co/docs/smolagents/main/en/reference/agents#smolagents.MultiStepAgent) выполняет:
+- Одно рассуждение.
+- Один вызов инструмента и его выполнение.
+
+Помимо основного типа агента — **[CodeAgent](https://huggingface.co/docs/smolagents/main/en/reference/agents#smolagents.CodeAgent)**, — smolagents поддерживает **[ToolCallingAgent](https://huggingface.co/docs/smolagents/main/en/reference/agents#smolagents.ToolCallingAgent)**, который записывает вызовы инструментов в JSON.
+
+В следующих уроках мы подробнее рассмотрим оба типа.
+
+> [!TIP]
+> В smolagents инструменты определяются с помощью декоратора <code>@tool</code>, оборачивающего функцию Python, или класса <code>Tool</code>.
+
+### Подключение моделей в `smolagents` [[model-integration-in-smolagents]]
+`smolagents` поддерживает гибкую интеграцию с LLM: можно использовать любую вызываемую модель, которая соответствует [определённым требованиям](https://huggingface.co/docs/smolagents/main/en/reference/models). Во фреймворке есть несколько готовых классов, упрощающих подключение моделей:
+
+- **[TransformersModel](https://huggingface.co/docs/smolagents/main/en/reference/models#smolagents.TransformersModel):** использует локальный pipeline `transformers` для удобной интеграции.
+- **[InferenceClientModel](https://huggingface.co/docs/smolagents/main/en/reference/models#smolagents.InferenceClientModel):** поддерживает вызовы [бессерверного инференса](https://huggingface.co/docs/huggingface_hub/main/en/guides/inference) через [инфраструктуру Hugging Face](https://huggingface.co/docs/api-inference/index) или через растущий список [сторонних провайдеров инференса](https://huggingface.co/docs/huggingface_hub/main/en/guides/inference#supported-providers-and-tasks).
+- **[LiteLLMModel](https://huggingface.co/docs/smolagents/main/en/reference/models#smolagents.LiteLLMModel):** использует [LiteLLM](https://www.litellm.ai/) для взаимодействия с моделями через лёгкую обёртку.
+- **[OpenAIServerModel](https://huggingface.co/docs/smolagents/main/en/reference/models#smolagents.OpenAIServerModel):** подключается к любому сервису с интерфейсом OpenAI API.
+- **[AzureOpenAIServerModel](https://huggingface.co/docs/smolagents/main/en/reference/models#smolagents.AzureOpenAIServerModel):** поддерживает интеграцию с любым развёртыванием Azure OpenAI.
+
+Такая гибкость позволяет разработчикам выбирать модель и сервис под конкретную задачу и легко экспериментировать.
+
+Теперь, когда мы разобрались, зачем и когда использовать smolagents, давайте изучим эту мощную библиотеку подробнее!
+
+## Ресурсы [[resources]]
+
+- [Статья о smolagents](https://huggingface.co/blog/smolagents) — знакомство со smolagents и взаимодействием через код.

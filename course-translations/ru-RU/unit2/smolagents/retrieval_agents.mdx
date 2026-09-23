@@ -1,0 +1,167 @@
+<CourseFloatingBanner 
+  classNames="absolute z-10 right-0 top-0"
+  notebooks={[
+    {label: "Google Colab", value: "https://colab.research.google.com/#fileId=https://huggingface.co/agents-course/notebooks/blob/main/unit2/smolagents/retrieval_agents.ipynb"},
+]}
+askForHelpUrl="http://hf.co/join/discord" />
+
+# Создаём системы Agentic RAG [[building-agentic-rag-systems]]
+
+> [!TIP]
+> Код урока доступен в <a href="https://huggingface.co/agents-course/notebooks/blob/main/unit2/smolagents/retrieval_agents.ipynb" target="_blank">этом блокноте</a>, который можно запустить в Google Colab.
+
+Системы Retrieval-Augmented Generation (RAG) объединяют поиск данных и генеративные модели, чтобы формировать ответы с учётом контекста. Например, запрос пользователя передаётся поисковой системе, а найденные результаты вместе с запросом — модели. Затем модель генерирует ответ на основе запроса и полученной информации.
+
+Agentic RAG расширяет традиционный RAG, **объединяя автономных агентов с динамическим поиском знаний**.
+
+В обычной RAG-системе LLM отвечает на запросы по найденным данным. Agentic RAG **позволяет интеллектуально управлять и поиском, и генерацией**, повышая эффективность и точность.
+
+У традиционных RAG-систем есть существенные ограничения: они **опираются на единственный шаг поиска** и прямое семантическое сходство с пользовательским запросом, из-за чего могут упускать полезную информацию.
+
+Agentic RAG решает эти проблемы: агент самостоятельно формулирует поисковые запросы, критически оценивает результаты и выполняет несколько шагов поиска, чтобы подготовить более полный ответ, соответствующий задаче.
+
+## Простой поиск с DuckDuckGo [[basic-retrieval-with-duckduckgo]]
+
+Создадим простого агента, который ищет информацию в интернете через DuckDuckGo и на её основе формирует ответы. С Agentic RAG агент Альфреда сможет:
+
+* Находить свежие тенденции в организации супергеройских вечеринок.
+* Уточнять результаты, добавляя элементы роскоши.
+* Объединять информацию в полноценный план.
+
+Вот как это реализовать:
+
+```python
+from smolagents import CodeAgent, DuckDuckGoSearchTool, InferenceClientModel
+
+# Initialize the search tool
+search_tool = DuckDuckGoSearchTool()
+
+# Initialize the model
+model = InferenceClientModel()
+
+agent = CodeAgent(
+    model=model,
+    tools=[search_tool],
+)
+
+# Example usage
+response = agent.run(
+    "Search for luxury superhero-themed party ideas, including decorations, entertainment, and catering."
+)
+print(response)
+```
+
+Агент следует такому процессу:
+
+1. **Анализирует запрос:** выделяет его основные элементы — планирование роскошной супергеройской вечеринки с акцентом на декор, развлечения и кейтеринг.
+2. **Выполняет поиск:** использует DuckDuckGo для получения наиболее актуальной и подходящей информации, соответствующей изысканным предпочтениям Альфреда.
+3. **Обобщает информацию:** превращает собранные результаты в связный практический план, охватывающий все стороны вечеринки.
+4. **Сохраняет данные на будущее:** найденная информация остаётся доступной для планирования следующих мероприятий, что повышает эффективность дальнейшей работы.
+
+## Инструмент для собственной базы знаний [[custom-knowledge-base-tool]]
+
+В специализированных задачах собственная база знаний может оказаться незаменимой. Создадим инструмент для обращения к векторной базе технической документации или специальных знаний. Семантический поиск поможет агенту находить сведения, которые лучше всего подходят для нужд Альфреда.
+
+Векторная база хранит числовые представления — эмбеддинги — текста или других данных, полученные моделями машинного обучения. Семантический поиск в ней основан на выявлении близких смыслов в многомерном пространстве.
+
+Такой подход объединяет заранее подготовленные знания и семантический поиск, позволяя учитывать контекст при планировании мероприятий. Доступ к специальным знаниям поможет Альфреду довести до совершенства каждую деталь вечеринки.
+
+В этом примере мы создадим инструмент для поиска идей в собственной базе знаний о планировании вечеринок. Для поиска и возврата лучших результатов используем BM25 retriever, а для разбиения документов на небольшие фрагменты — `RecursiveCharacterTextSplitter`, чтобы искать было удобнее.
+
+```python
+from langchain_community.docstore.document import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from smolagents import Tool
+from langchain_community.retrievers import BM25Retriever
+from smolagents import CodeAgent, InferenceClientModel
+
+class PartyPlanningRetrieverTool(Tool):
+    name = "party_planning_retriever"
+    description = "Uses semantic search to retrieve relevant party planning ideas for Alfred’s superhero-themed party at Wayne Manor."
+    inputs = {
+        "query": {
+            "type": "string",
+            "description": "The query to perform. This should be a query related to party planning or superhero themes.",
+        }
+    }
+    output_type = "string"
+
+    def __init__(self, docs, **kwargs):
+        super().__init__(**kwargs)
+        self.retriever = BM25Retriever.from_documents(
+            docs, k=5  # Retrieve the top 5 documents
+        )
+
+    def forward(self, query: str) -> str:
+        assert isinstance(query, str), "Your search query must be a string"
+
+        docs = self.retriever.invoke(
+            query,
+        )
+        return "\nRetrieved ideas:\n" + "".join(
+            [
+                f"\n\n===== Idea {str(i)} =====\n" + doc.page_content
+                for i, doc in enumerate(docs)
+            ]
+        )
+
+# Simulate a knowledge base about party planning
+party_ideas = [
+    {"text": "A superhero-themed masquerade ball with luxury decor, including gold accents and velvet curtains.", "source": "Party Ideas 1"},
+    {"text": "Hire a professional DJ who can play themed music for superheroes like Batman and Wonder Woman.", "source": "Entertainment Ideas"},
+    {"text": "For catering, serve dishes named after superheroes, like 'The Hulk's Green Smoothie' and 'Iron Man's Power Steak.'", "source": "Catering Ideas"},
+    {"text": "Decorate with iconic superhero logos and projections of Gotham and other superhero cities around the venue.", "source": "Decoration Ideas"},
+    {"text": "Interactive experiences with VR where guests can engage in superhero simulations or compete in themed games.", "source": "Entertainment Ideas"}
+]
+
+source_docs = [
+    Document(page_content=doc["text"], metadata={"source": doc["source"]})
+    for doc in party_ideas
+]
+
+# Split the documents into smaller chunks for more efficient search
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500,
+    chunk_overlap=50,
+    add_start_index=True,
+    strip_whitespace=True,
+    separators=["\n\n", "\n", ".", " ", ""],
+)
+docs_processed = text_splitter.split_documents(source_docs)
+
+# Create the retriever tool
+party_planning_retriever = PartyPlanningRetrieverTool(docs_processed)
+
+# Initialize the agent
+agent = CodeAgent(tools=[party_planning_retriever], model=InferenceClientModel())
+
+# Example usage
+response = agent.run(
+    "Find ideas for a luxury superhero-themed party, including entertainment, catering, and decoration options."
+)
+
+print(response)
+```
+
+Теперь агент умеет:
+1. Сначала искать нужную информацию в документации.
+2. Объединять сведения из базы знаний.
+3. Сохранять контекст разговора в памяти.
+
+## Расширенные возможности поиска [[enhanced-retrieval-capabilities]]
+
+В системах Agentic RAG агент может использовать более сложные стратегии:
+
+1. **Переформулирование запроса:** вместо исходного запроса пользователя составлять поисковые формулировки, лучше соответствующие нужным документам.
+2. **Декомпозиция запроса:** если пользователь спрашивает сразу о нескольких вещах, разбить его запрос на несколько отдельных.
+3. **Расширение запроса:** подобно переформулированию, создавать несколько вариантов одного запроса и выполнять поиск по каждому из них.
+4. **Повторное ранжирование:** использовать Cross-Encoders для более глубокой оценки семантической релевантности найденных документов запросу.
+5. **Многошаговый поиск:** выполнять несколько поисков, используя первые результаты для уточнения следующих запросов.
+6. **Объединение источников:** собирать информацию из разных мест, например из веб-поиска и локальной документации.
+7. **Проверка результатов:** оценивать релевантность и точность найденных материалов до включения их в ответ.
+
+При создании эффективной системы Agentic RAG нужно продумать несколько вещей. Агент **должен выбирать доступные инструменты с учётом типа запроса и контекста**. Память помогает сохранять историю разговора и избегать повторного поиска одних и тех же сведений. Запасные стратегии позволяют системе оставаться полезной, даже если основной способ поиска не сработал. Наконец, этапы проверки помогают убедиться в точности и релевантности найденной информации.
+
+## Ресурсы [[resources]]
+
+- [Agentic RAG: ускоряем RAG с помощью переформулирования запросов и self-query! 🚀](https://huggingface.co/learn/cookbook/agent_rag) — пример создания системы Agentic RAG на smolagents.

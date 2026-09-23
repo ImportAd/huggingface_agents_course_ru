@@ -1,0 +1,263 @@
+{
+  "language": "ru-RU",
+  "sourceRepository": "https://github.com/huggingface/agents-course",
+  "sourceRevision": "b3946b1d09d29c65736e219d48a8a736a2c52154",
+  "translator": "Локальный перевод, подготовленный ИИ-ассистентом и проверенный на структуру и терминологию",
+  "lessons": {
+    "unit2/introduction": {
+      "sourceSha256": "d6d9f0b3bf4f9cb0502f3da4374639568b41f23d4191457a0b27d1d567b7185a",
+      "translationSha256": "691b9cec4811f2c11cef58cd0d37f71ca946a587ce6deb35657b9a7adda53f24",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/introduction": {
+      "sourceSha256": "8e0b9f69a898feaca4380acc3f9ceef2a0d9bda2624dce7a18463cbf969692ea",
+      "translationSha256": "725b081df983b12dc235209b7798271d774c1039ac9dab421f2d8aafbe4a9d4c",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/tool_calling_agents": {
+      "sourceSha256": "f3adae56557e88e5a763b6243bce4da1535ef837572cba255ec211e98ea872dd",
+      "translationSha256": "d63021f9cba522984c071cc6c85c7fa1199fbdb347af8fba761b81b4aff8105f",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/why_use_smolagents": {
+      "sourceSha256": "8d08e1edf77b5fafff2793c74ee104dd7dad66a03f89fd75a0848852d64b622d",
+      "translationSha256": "ab1aa2e821d35a8e918c64a3d91f0107749de79beafbf21c069bb25f80a9ba17",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/code_agents": {
+      "sourceSha256": "74f581f4df5c74a35129154ec4ec0b6902fceb256af83f918c6ca14063aa6134",
+      "translationSha256": "48fbe50112cd91a121b23896691573baf72888e603c0dde13481ef8bbf0d5a6d",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/multi_agent_systems": {
+      "sourceSha256": "44c474494f8f10d16cb7c16c8edfeee3304a6b5eb2f10221efbf0cc8152ee0cc",
+      "translationSha256": "4f38de2e87dc549b8c2908405a926def9861e628e004b596509b23759eec19c0",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/retrieval_agents": {
+      "sourceSha256": "59428c782dc7528c68405e982292ec8d975b62b796727ea62a9c42ef0ca1df0e",
+      "translationSha256": "77e5c50b5b06fcc092d8af2f20a1b29f51714ba70932eedf0dd66b90497e7a54",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/tools": {
+      "sourceSha256": "9e1dc550be3bb8a5da9b0b708e941e3290d90d8596472d77e66a18943e73444c",
+      "translationSha256": "5dd3c50a76edcb8b7056e3297408f25acdf609338eacbeb402c6c88876a4e793",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/vision_agents": {
+      "sourceSha256": "ba91fd9aacc96946edf26196327ea9956b057c7b5d265e867442940c485b7c0f",
+      "translationSha256": "6536334b86a7ce3732d59b27314265e90a120b1d4739db6e7e84b93692091f10",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/conclusion": {
+      "sourceSha256": "7f71a5904257a261e3becc26a77413882755f88a82c4d82a1f44f2ce71e41f4f",
+      "translationSha256": "57da3350b4663453079a857ae21a068af3ef22630a24ab4da48be21f8e52f50f",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/final_quiz": {
+      "sourceSha256": "0b3fe6e86ed31f3b2be6f0ca33032e31504363ade119bdc9b41f1716709798e5",
+      "translationSha256": "5e51c211708c74e8c58a34b9987bc8b5c87dfa620dfd19dda9d0eb233b712f3a",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/quiz1": {
+      "sourceSha256": "62fe91a19d026c66aa381de860ee2461067fafe7c9370b712a68c7cd972542be",
+      "translationSha256": "bb8ac705123eb3779ca4f255f3a93d5a5451313e83af01403fb261e42776fbdb",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/smolagents/quiz2": {
+      "sourceSha256": "057ce2ee436720d48feea433abf5da6de24028c16ab1fec5f459312e7890d11b",
+      "translationSha256": "fcc649d6bc0cbdf1751aed70ff861d19155929618d2d6a9e075b23e002ddd1a5",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/agents": {
+      "sourceSha256": "fa7c713c8bb271dc76552193f3a787a9fb1ba0f729fae6a5fb2c9f6f09a6bb5d",
+      "translationSha256": "811457b2e1c974341337313e388cee75ffb104cbbac7caec7ad72104cdf14298",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/components": {
+      "sourceSha256": "b0fdcce8c21f765f9cdee02bc23c9b32d24f581da9da830c1efe1a4e2492de47",
+      "translationSha256": "724f683b7f861ecee036a7c956d05b209c4e2a39f8511e988d23f6e093678370",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/conclusion": {
+      "sourceSha256": "08990d55e3e738d02807aaa9e18eb2db68049f16fb92495e88f678cd18099f3b",
+      "translationSha256": "030beb020424c65018d58ec5d9e163188c63dce84e836db3b1ea3e88c021e78b",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/introduction": {
+      "sourceSha256": "d038777cd3e3b5b42f6ab90f3c0f327a6f966da7749d2ae685590c9cec7f224b",
+      "translationSha256": "2106725b457047e2743f7429f0607e1b19330a7846d1085164ee458f28d245ee",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/llama-hub": {
+      "sourceSha256": "036473cff8e97fa298ee181671c251bb374bd01ecc6be1cd90407ad189dacd16",
+      "translationSha256": "901de9c6f649baac955d44d559a88449deeb5638143f7154307d92c6c80c144d",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/quiz1": {
+      "sourceSha256": "4f9e38986524c2a9e054ba4dcaf1582441a23df317a75fececc5b22f085807f0",
+      "translationSha256": "2527ca247d8b0d10859a390cb6e3fa7ea8f688c5c4b4a5b4440cc955ec005121",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/quiz2": {
+      "sourceSha256": "0cf36263f4a63649bf2585a2d936d69d68fa0258a77dc97265f244870c32edd0",
+      "translationSha256": "3a2099ff6c08de7f123163482a2f9f484c183a0cbb2897481d53a1e17a1cb46e",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/tools": {
+      "sourceSha256": "ad53182c1f745330defccb3c1d78e9ccc18d2bfd3d28f1e79fcbd8d99da50932",
+      "translationSha256": "7bdd1ca4d7b0ecf109de18b95820732b300b44b2111f73254350b23e5730bf3f",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/llama-index/workflows": {
+      "sourceSha256": "d6263ba4d7f7a83077b260eec98808129f5f0e3acb7566f1da2785ea9b0d5b53",
+      "translationSha256": "9cc8f35edafc0193da187f5b937fe087982ad1f0ce8b0c1ddbc65aa46da4932d",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/langgraph/building_blocks": {
+      "sourceSha256": "c98b40330806fa19b6f5bed3aa8fae195f9fe55214dc7ea07d2f983ef59cdc60",
+      "translationSha256": "50cdc6a2fee25a9d09d329d09b5e92e3ba4b99440bf658d4ec35d7999a9eb0f1",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/langgraph/conclusion": {
+      "sourceSha256": "dfcb6d7d0708cf9cec87b4a2c25221e3cce6d2a386b62e63f21da644c7812291",
+      "translationSha256": "1188a7cf562d212bec2fa136f77cba50c7fca4730be7d6da4aa3617b061e6189",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/langgraph/document_analysis_agent": {
+      "sourceSha256": "4c1c5b5a8a031c6a4d940c7b1f7375025b5b810cc4fc6787c7eebb092f87abfd",
+      "translationSha256": "12fa6404ce3f5b9759a7ee87e27a49f7e42bd0885c057f627d489b8c08d69f6f",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/langgraph/first_graph": {
+      "sourceSha256": "4492659481943ec48bd35cd4442e81a769133634f5cd903bd5efd467eca62ca6",
+      "translationSha256": "6610189102cbe6b0c867335065f5cebea1c72437fde3ca31442e4ca5bfc30dc2",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/langgraph/introduction": {
+      "sourceSha256": "f56898582a47c0a54e10a925e9a99c3cdb6a1754e03bdf1d0ccc255e14c1e896",
+      "translationSha256": "4e7339c7122b4b2bc96bf51e9b2fbb8facfa747f1b3f5e1a330263cbf36229ff",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/langgraph/quiz1": {
+      "sourceSha256": "2aaeff6be0a2051bf43f389bd8bb8bb0c6e2268b470a54274e522c582dededf6",
+      "translationSha256": "d41825c0d0ae7740fe63a73c1576cb32cad646bae55c0ec172823269d953f677",
+      "translatedAt": "2026-09-11"
+    },
+    "unit2/langgraph/when_to_use_langgraph": {
+      "sourceSha256": "01f6b4a0ccd476d0a5b67534d7905a136a5e37c9d7e444e66b616e9bd36cb43b",
+      "translationSha256": "7ae3a24be3e8d50b9b8e6f92e090e82355c5bf096bf3715ac69b0531b98a2692",
+      "translatedAt": "2026-09-11"
+    },
+    "unit3/agentic-rag/agent": {
+      "sourceSha256": "e3901ce4d2a43c06148b6459ff44586f905ec3a8d393bd76a0f1c91f7ec31dc1",
+      "translationSha256": "1f2741a39b9d3c72c4f85bd51a73062aaf7cefacad78d1ba152aa463372fa6ea",
+      "translatedAt": "2026-09-11"
+    },
+    "unit3/agentic-rag/agentic-rag": {
+      "sourceSha256": "1da2f883fbd30681a9f0f640183f4cc61e328200a984eb28a9b87f8f7e8a4e6f",
+      "translationSha256": "5ab86b3a251f2b4660a15168379caf8dc542035da708364bf5c3850c92c4aadc",
+      "translatedAt": "2026-09-11"
+    },
+    "unit3/agentic-rag/conclusion": {
+      "sourceSha256": "5184edc85e3a53bbdad61e8af71cf12aa21a993ec8260a94fa1f4a3ddc94a934",
+      "translationSha256": "d716f52ab4ba863c5f5ca665d7a01ff7a1a951903ccca3ad43c7631e54810f27",
+      "translatedAt": "2026-09-11"
+    },
+    "unit3/agentic-rag/introduction": {
+      "sourceSha256": "9669b0ae979f0c48b3edf9c83cfa1b4d3c8ef0e5b4ba8cb5870c60701448d0f6",
+      "translationSha256": "33dbb8a8957cd36a0d50f485b594b9b921919f79551ad0cc539090ff26c9cb0a",
+      "translatedAt": "2026-09-11"
+    },
+    "unit3/agentic-rag/invitees": {
+      "sourceSha256": "d5e2da915be69307c1717fd880b280941038becc746d2435442230731f13f545",
+      "translationSha256": "a189a3d1f4aec9800a7f668798ea8623011d37dc7ae0c3946c16e58020895aa6",
+      "translatedAt": "2026-09-11"
+    },
+    "unit3/agentic-rag/tools": {
+      "sourceSha256": "60c31dd566309dec5492cdd391fa3be9517d13bc455b7e9204debf6bd2215d5b",
+      "translationSha256": "17447ee5c852d3bc1235d50db1aed7647f31377741a0135f0d74a7533907a6ee",
+      "translatedAt": "2026-09-11"
+    },
+    "unit4/additional-readings": {
+      "sourceSha256": "2309defe78b677264570cbf3046737329ace48e1048336fdb9afbd79f013a477",
+      "translationSha256": "525e9e9daed013346d9f7f9f8965f4586feb534c6f3e01790ce2fb0ef548fcda",
+      "translatedAt": "2026-09-15"
+    },
+    "unit4/conclusion": {
+      "sourceSha256": "ff1c996b9ff291dedb579039f9f6b0e94add995f24eddf14dba5b541c84b901f",
+      "translationSha256": "f1a6f5d4fcd68c6f148f81240b9285bb58c845ad6e966e7cc5d43b8b1e818c09",
+      "translatedAt": "2026-09-15"
+    },
+    "unit4/get-your-certificate": {
+      "sourceSha256": "ef694abfdb24a1a3039ea90c4419a485be62d696dd6aee0184c06f6db256663e",
+      "translationSha256": "a05560223490b62bd74be5d22dd3d9534dcc7b6fc5789841af640439cbd74c6e",
+      "translatedAt": "2026-09-15"
+    },
+    "unit4/hands-on": {
+      "sourceSha256": "13b0bab2a803fec53e12ecf6f5eb9f2022650dbeee21f9b45098f19b55039cd3",
+      "translationSha256": "eab3b3c0ca0679ba7b104faad1ae338e8062778c32568f0530e155380308b31a",
+      "translatedAt": "2026-09-15"
+    },
+    "unit4/introduction": {
+      "sourceSha256": "0a64186ec96b8db6829a44bd61fe6153ea9092c86c36d361483b802e1cc0814b",
+      "translationSha256": "1c287acb00f3643a98d5741bd25470fafb4989172e3019259ba5b7086a841547",
+      "translatedAt": "2026-09-15"
+    },
+    "unit4/what-is-gaia": {
+      "sourceSha256": "75f0df611d2f95e35934d24173b466e8aceeac299827923ac34bd8405d5155af",
+      "translationSha256": "8a71f14535cfec84eb57efd7b6d3769a7ced56a2474302da316e1768f08d4f23",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit3/building_your_pokemon_agent": {
+      "sourceSha256": "ef03686fbc8d56b458dc16ee5100a0c355026fdc25fc21f83d4ab1bea57449bd",
+      "translationSha256": "34514cdf6558fdc357ba91deb8da86760fcf20fcfeae853f7a93c6ad546172b1",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit3/conclusion": {
+      "sourceSha256": "65b59be8f8936fe2444846495e13b9993f6c318eb770f0be7b32a8f2f0ea587a",
+      "translationSha256": "45f5e0a5c84b17a58a39fd742f98ff4498e5f463e55e2a97c576e6066bcc13ff",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit3/from-llm-to-agents": {
+      "sourceSha256": "3fa6d95890c69d4b49d5db5e59b1ae6430d2bc676ad646c62a18e3ffa58d0bf6",
+      "translationSha256": "e09b00fe6a774aed026184ead23992b53194122b335edca1bcea12d8ab83de03",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit3/introduction": {
+      "sourceSha256": "804eb1b56f6e4a93b9075ac544414d88a6ea78fe9537bc132c791266c9063c9e",
+      "translationSha256": "8c56c4ef94a576c8a94ae0fff504a3c9cc0a777cd23e2ab79f49bcf23a31a971",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit3/launching_agent_battle": {
+      "sourceSha256": "d3d6d86e2d53668a8097890823a81a5fc942d01339233c0f5b9da01e35ccf880",
+      "translationSha256": "8f7ca5713ada1981d9d51c6fb2428bb52a931432d7de968352690ea5c55e2286",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit3/state-of-art": {
+      "sourceSha256": "8d9cd1a665cf434bfa3f77bc00e71e333f7bc8b9294c7cd62e23f12b06f78e04",
+      "translationSha256": "b00a3732d3fd2c26d91eb7250caa34f97d7eb1762da51be2156a51e6ec6e7b46",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit2/introduction": {
+      "sourceSha256": "4bcfc6b8ac774b5f0848326a8c618905e22c835fccfba2a200cfff5c93aa79bf",
+      "translationSha256": "f90010a4525581532d5a2b1e5f4eb5d14a1c3a7be8d8a56961c801027fa76042",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit2/monitoring-and-evaluating-agents-notebook": {
+      "sourceSha256": "5d60aafa2bd25c168d9af30b3ecba3262e451bfbf661d904381a4f2140773781",
+      "translationSha256": "4047d2940b657df4e2500fe26d687487bd2de80769a5fab66d174b0475895ccb",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit2/quiz": {
+      "sourceSha256": "1002fc5c1d508e1decbf95c8df0e30547b77c9a6eaad297bbed304ee457a72ad",
+      "translationSha256": "90893e700be7825cc3d14a6cc7bf94afdfdec85f84009bbf70aca01eb1feacf4",
+      "translatedAt": "2026-09-15"
+    },
+    "bonus-unit2/what-is-agent-observability-and-evaluation": {
+      "sourceSha256": "285010a111331cb86b78afef2d28623834786a42f5771deb000212a78bfa421a",
+      "translationSha256": "165bdf8c85c8ff86c7471f3b5cb5273eb541e2529aea4adc8e24851f3165eb2d",
+      "translatedAt": "2026-09-15"
+    }
+  }
+}

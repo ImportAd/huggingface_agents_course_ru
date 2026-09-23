@@ -1,0 +1,10 @@
+{
+  "0:group:unit2/introduction": "Раздел 2. Фреймворки для ИИ-агентов",
+  "0:group:unit2/smolagents/introduction": "Раздел 2.1. Фреймворк smolagents",
+  "0:group:unit2/llama-index/introduction": "Раздел 2.2. Фреймворк LlamaIndex",
+  "0:group:unit2/langgraph/introduction": "Раздел 2.3. Фреймворк LangGraph",
+  "0:group:unit3/agentic-rag/introduction": "Раздел 3. Практический пример Agentic RAG",
+  "0:group:unit4/introduction": "Раздел 4. Итоговый проект: создайте, проверьте агента и получите сертификат",
+  "0:group:bonus-unit2/introduction": "Бонусный раздел 2. Наблюдаемость и оценка агентов",
+  "0:group:bonus-unit3/introduction": "Бонусный раздел 3. Агенты в играх: Pokémon"
+}

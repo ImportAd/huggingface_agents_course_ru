@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.coverage
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.clone-check/
+local-course-reader/dist/
+local-course-reader/public/course/
+local-course-reader/test-results/
+*.log
+local-course-reader/.translation-work/
+first-local-agent/.venv/

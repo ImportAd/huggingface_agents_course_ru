@@ -1,0 +1,245 @@
+# Что такое компоненты в LlamaIndex? [[what-are-components-in-llamaindex]]
+
+Помните Альфреда, нашего услужливого агента-дворецкого из раздела 1?
+Чтобы эффективно помогать, он должен понимать запросы и **подготавливать, находить и использовать подходящую информацию для выполнения задач**.
+Здесь пригодятся компоненты LlamaIndex.
+
+Компонентов в LlamaIndex много, но **мы сосредоточимся на `QueryEngine`**.
+Почему? Потому что агент может использовать его как инструмент Retrieval-Augmented Generation (RAG).
+
+Что же такое RAG? LLM обучаются на огромных массивах данных и получают общие знания.
+Но нужных вам актуальных сведений в обучающих данных может не оказаться.
+RAG решает эту проблему: находит подходящую информацию в ваших данных и передаёт её LLM.
+
+![RAG](https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit2/llama-index/rag.png)
+
+Представьте, как работает Альфред:
+
+1. Вы просите помочь с организацией званого ужина.
+2. Альфреду нужно проверить ваш календарь, предпочтения в еде и меню прошлых удачных ужинов.
+3. `QueryEngine` помогает найти эти сведения и использовать их для планирования.
+
+Поэтому `QueryEngine` — **ключевой компонент агентных рабочих процессов RAG** в LlamaIndex.
+Чтобы быть полезным, Альфреду нужно искать сведения о вашем домашнем хозяйстве; точно так же любому агенту нужен способ находить и понимать подходящие данные.
+Именно эту возможность предоставляет `QueryEngine`.
+
+Давайте подробнее изучим компоненты и посмотрим, как **объединить их в RAG-конвейер**.
+
+## Создаём RAG-конвейер из компонентов [[creating-a-rag-pipeline-using-components]]
+
+> [!TIP]
+> Код урока доступен в <a href="https://huggingface.co/agents-course/notebooks/blob/main/unit2/llama-index/components.ipynb" target="_blank">этом блокноте</a>, который можно запустить в Google Colab.
+
+У RAG есть пять основных этапов, которые также войдут в большинство ваших более крупных приложений:
+
+1. **Загрузка:** получение данных из места их хранения — текстовых файлов, PDF, сайта, базы данных или API — и включение в рабочий процесс. В LlamaHub для этого есть сотни интеграций.
+2. **Индексирование:** создание структуры данных, позволяющей выполнять запросы. Для LLM это почти всегда означает получение векторных эмбеддингов — числовых представлений смысла данных. Индексирование также может включать другие стратегии работы с метаданными, упрощающие точный поиск контекстно релевантных данных по их свойствам.
+3. **Хранение:** индекс и другие метаданные нужно сохранять, чтобы не индексировать всё заново.
+4. **Выполнение запросов:** для любой стратегии индексирования есть разные способы обращения к данным через LLM и структуры LlamaIndex: подзапросы, многошаговые запросы и гибридные подходы.
+5. **Оценка:** важно проверять эффективность процесса по сравнению с другими стратегиями и после изменений. Оценка даёт объективные показатели правильности ответов, их соответствия источникам и скорости получения.
+
+Теперь посмотрим, как реализовать эти этапы с помощью компонентов.
+
+### Загружаем документы и создаём эмбеддинги [[loading-and-embedding-documents]]
+
+Как мы уже говорили, LlamaIndex может работать с вашими данными, но **прежде чем обращаться к ним, их нужно загрузить**.
+Есть три основных способа загрузки:
+
+1. `SimpleDirectoryReader`: встроенный загрузчик файлов разных типов из локальной папки.
+2. `LlamaParse`: официальный инструмент LlamaIndex для разбора PDF, доступный как управляемый API-сервис.
+3. `LlamaHub`: каталог сотен библиотек загрузки данных из разнообразных источников.
+
+> [!TIP]
+> Для более сложных источников познакомьтесь с загрузчиками <a href="https://docs.llamaindex.ai/en/stable/module_guides/loading/connector/">LlamaHub</a> и парсером <a href="https://github.com/run-llama/llama_cloud_services/blob/main/parse.md">LlamaParse</a>.
+
+**Проще всего загрузить данные через `SimpleDirectoryReader`.**
+Этот универсальный компонент читает разные типы файлов из папки и превращает их в объекты `Document`, с которыми работает LlamaIndex.
+Посмотрим, как им воспользоваться.
+
+```python
+from llama_index.core import SimpleDirectoryReader
+
+reader = SimpleDirectoryReader(input_dir="path/to/directory")
+documents = reader.load_data()
+```
+
+После загрузки документы нужно разбить на небольшие части — объекты `Node`.
+`Node` — это фрагмент текста исходного документа, с которым ИИ удобнее работать; при этом в нём сохраняются ссылки на исходный объект `Document`.
+
+`IngestionPipeline` помогает создать такие узлы с помощью двух основных преобразований:
+1. `SentenceSplitter` разбивает документы на удобные фрагменты по естественным границам предложений.
+2. `HuggingFaceEmbedding` превращает каждый фрагмент в числовой эмбеддинг — векторное представление смысла, которое ИИ может эффективно обрабатывать.
+
+Так мы организуем документы в форме, удобной для поиска и анализа.
+
+```python
+from llama_index.core import Document
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.ingestion import IngestionPipeline
+
+# create the pipeline with transformations
+pipeline = IngestionPipeline(
+    transformations=[
+        SentenceSplitter(chunk_overlap=0),
+        HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5"),
+    ]
+)
+
+nodes = await pipeline.arun(documents=[Document.example()])
+```
+
+### Храним и индексируем документы [[storing-and-indexing-documents]]
+
+Созданные объекты `Node` нужно проиндексировать для поиска, но сначала необходимо выбрать место хранения данных.
+
+Поскольку мы используем конвейер загрузки, векторное хранилище можно подключить прямо к нему, чтобы заполнять его в процессе обработки.
+В этом примере документы будут храниться в `Chroma`.
+
+<details>
+<summary>Установка ChromaDB</summary>
+
+Как мы узнали в <a href="./llama-hub">уроке о LlamaHub</a>, интеграцию с векторным хранилищем ChromaDB можно установить командой:
+
+```bash
+pip install llama-index-vector-stores-chroma
+```
+</details>
+
+```python
+import chromadb
+from llama_index.vector_stores.chroma import ChromaVectorStore
+
+db = chromadb.PersistentClient(path="./alfred_chroma_db")
+chroma_collection = db.get_or_create_collection("alfred")
+vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+pipeline = IngestionPipeline(
+    transformations=[
+        SentenceSplitter(chunk_size=25, chunk_overlap=0),
+        HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5"),
+    ],
+    vector_store=vector_store,
+)
+```
+
+> [!TIP]
+> Обзор разных векторных хранилищ доступен в <a href="https://docs.llamaindex.ai/en/stable/module_guides/storing/vector_stores/">документации LlamaIndex</a>.
+
+Теперь в дело вступают эмбеддинги: представив запрос и узлы в одном векторном пространстве, мы можем находить подходящие совпадения.
+Эту работу выполняет `VectorStoreIndex`. Для согласованности он использует ту же модель эмбеддингов, что и при загрузке данных.
+
+Создадим индекс на основе нашего векторного хранилища и эмбеддингов:
+
+```python
+from llama_index.core import VectorStoreIndex
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
+index = VectorStoreIndex.from_vector_store(vector_store, embed_model=embed_model)
+```
+
+Вся информация автоматически сохраняется через объект `ChromaVectorStore` в указанной папке.
+
+Отлично! Теперь мы умеем сохранять и загружать индекс. Посмотрим, как обращаться к нему разными способами.
+
+### Запрашиваем VectorStoreIndex с помощью промптов и LLM [[querying-a-vectorstoreindex-with-prompts-and-llms]]
+
+Перед выполнением запросов нужно получить из индекса соответствующий интерфейс. Самые распространённые варианты:
+
+- `as_retriever`: простой поиск документов с возвратом списка объектов `NodeWithScore`, содержащих оценки сходства.
+- `as_query_engine`: взаимодействие в формате одного вопроса и ответа с возвратом текстового ответа.
+- `as_chat_engine`: диалог с сохранением памяти между сообщениями; текстовый ответ учитывает историю чата и контекст из индекса.
+
+Мы сосредоточимся на query engine, поскольку он чаще используется при взаимодействии с агентами.
+Также передадим ему LLM для формирования ответа.
+
+```python
+from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI
+
+llm = HuggingFaceInferenceAPI(model_name="Qwen/Qwen2.5-Coder-32B-Instruct")
+query_engine = index.as_query_engine(
+    llm=llm,
+    response_mode="tree_summarize",
+)
+query_engine.query("What is the meaning of life?")
+# The meaning of life is 42
+```
+
+### Обработка ответа [[response-processing]]
+
+Под капотом query engine не просто обращается к LLM с вопросом: он использует `ResponseSynthesizer`, задающий стратегию построения ответа.
+Это поведение полностью настраивается, но есть три основных варианта, хорошо работающих из коробки:
+
+- `refine`: создаёт и уточняет ответ, последовательно обрабатывая каждый найденный фрагмент текста. Для каждого узла или фрагмента выполняется отдельный вызов LLM.
+- `compact` (по умолчанию): похож на `refine`, но предварительно объединяет фрагменты, сокращая количество вызовов LLM.
+- `tree_summarize`: формирует подробный ответ, обрабатывая найденные фрагменты и выстраивая древовидную структуру их обобщений.
+
+> [!TIP]
+> Для детального управления процессом запросов используйте <a href="https://docs.llamaindex.ai/en/stable/module_guides/deploying/query_engine/usage_pattern/#low-level-composition-api">низкоуровневый API композиции</a>. Он позволяет точно настроить каждый этап под вашу задачу и хорошо сочетается с <a href="https://docs.llamaindex.ai/en/stable/module_guides/workflow/">Workflows</a>.
+
+Поведение языковой модели не всегда предсказуемо, поэтому мы не можем быть уверены, что полученный ответ неизменно верен. С этим помогает справиться **оценка качества ответа**.
+
+### Оценка и наблюдаемость [[evaluation-and-observability]]
+
+В LlamaIndex есть **встроенные инструменты оценки качества ответов**.
+Они используют LLM для анализа по разным критериям.
+Рассмотрим три основных инструмента:
+
+- `FaithfulnessEvaluator`: проверяет, подтверждается ли ответ предоставленным контекстом.
+- `AnswerRelevancyEvaluator`: проверяет, соответствует ли ответ заданному вопросу.
+- `CorrectnessEvaluator`: оценивает правильность ответа.
+
+> [!TIP]
+> Хотите узнать больше о наблюдаемости и оценке агентов? Продолжайте изучение в <a href="https://huggingface.co/learn/agents-course/bonus-unit2/introduction">бонусном разделе 2</a>.
+
+```python
+from llama_index.core.evaluation import FaithfulnessEvaluator
+
+query_engine = # from the previous section
+llm = # from the previous section
+
+# query index
+evaluator = FaithfulnessEvaluator(llm=llm)
+response = query_engine.query(
+    "What battles took place in New York City in the American Revolution?"
+)
+eval_result = evaluator.evaluate_response(response=response)
+eval_result.passing
+```
+
+Даже без прямой оценки можно **понять, как работает система, благодаря наблюдаемости**.
+Это особенно полезно при создании сложных рабочих процессов, когда важно разобраться в поведении каждого компонента.
+
+<details>
+<summary>Установка LlamaTrace</summary>
+
+Как и в <a href="./llama-hub">уроке о LlamaHub</a>, установим callback-интеграцию LlamaTrace от Arize Phoenix командой:
+
+```bash
+pip install -U llama-index-callbacks-arize-phoenix
+```
+
+Кроме того, нужно записать API-ключ LlamaTrace в переменную окружения `PHOENIX_API_KEY`. Для этого:
+- Создайте аккаунт в [LlamaTrace](https://llamatrace.com/login).
+- Сгенерируйте API-ключ в настройках аккаунта.
+- Подставьте ключ в код ниже, чтобы включить трассировку.
+
+</details>
+
+```python
+import llama_index
+import os
+
+PHOENIX_API_KEY = "<PHOENIX_API_KEY>"
+os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"api_key={PHOENIX_API_KEY}"
+llama_index.core.set_global_handler(
+    "arize_phoenix",
+    endpoint="https://llamatrace.com/v1/traces"
+)
+```
+
+> [!TIP]
+> Подробнее о компонентах и их использовании читайте в <a href="https://docs.llamaindex.ai/en/stable/module_guides/">руководствах по компонентам</a> и <a href="https://docs.llamaindex.ai/en/stable/understanding/rag/">руководстве по RAG</a>.
+
+Мы увидели, как создать `QueryEngine` из компонентов. Теперь посмотрим, как **использовать `QueryEngine` в качестве инструмента агента!**

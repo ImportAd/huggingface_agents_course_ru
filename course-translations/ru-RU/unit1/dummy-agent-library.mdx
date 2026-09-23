@@ -1,0 +1,77 @@
+# Собираем цикл агента вручную [[dummy-agent-library]]
+
+<img src="https://huggingface.co/datasets/agents-course/course-images/resolve/main/en/unit1/whiteboard-unit1sub3DONE.jpg" alt="Схема раздела 1"/>
+
+Этот курс знакомит вас с устройством ИИ-агентов, поэтому сначала мы построим небольшой цикл **без агентного фреймворка**. Так вы увидите, какие действия библиотека позже возьмёт на себя. Идеи из упражнения пригодятся независимо от того, какой фреймворк вы выберете.
+
+В оригинальном уроке для инференса используется Hugging Face Inference Providers и ноутбук с `InferenceClient`. У такого варианта есть лимиты и условия оплаты, которые могут меняться. В локальной версии мы выполним тот же учебный цикл через [Ollama](https://docs.ollama.com/linux): модель и инструмент запускаются на вашем Ubuntu сервере. Для этого упражнения не нужен токен Hugging Face. Старый [ноутбук оригинального курса](https://huggingface.co/agents-course/notebooks/blob/main/unit1/dummy_agent_library.ipynb) остаётся полезным для сравнения, но его примеры требуют отдельного облачного доступа.
+
+## Модель, инструмент и сообщения [[serverless-api]]
+
+После установки Ollama и загрузки модели `qwen3:4b-instruct` (пошаговые команды приведены в [следующем уроке](tutorial)) программа может отправить ей сообщения через локальный API. Вот самый простой вызов:
+
+```python
+from ollama import Client
+
+client = Client(host="http://127.0.0.1:11434")
+reply = client.chat(
+    model="qwen3:4b-instruct",
+    messages=[{"role": "user", "content": "Что такое ИИ-агент?"}],
+)
+print(reply.message.content)
+```
+
+Здесь модель только отвечает текстом. Чтобы она могла получить сведения, которых у неё нет, определим **инструмент** — обычную функцию Python:
+
+```python
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+def get_current_time_in_timezone(timezone: str) -> str:
+    """Return the current time in an IANA timezone.
+
+    Args:
+        timezone: IANA timezone such as Europe/Moscow.
+    """
+    return datetime.now(ZoneInfo(timezone)).isoformat(timespec="seconds")
+```
+
+Функция вычисляет результат в Python. Если попросить модель назвать текущее время без инструмента, она может угадать или выдать устаревшее значение. Поэтому мы передадим описание функции модели и попросим её **выбрать действие**:
+
+```python
+messages = [
+    {"role": "system", "content": "Ты Альфред. Для текущего времени вызови инструмент. Отвечай по-русски."},
+    {"role": "user", "content": "Который сейчас час в Europe/Moscow?"},
+]
+first = client.chat(
+    model="qwen3:4b-instruct",
+    messages=messages,
+    tools=[get_current_time_in_timezone],
+)
+```
+
+`messages` — история разговора. Системное сообщение объясняет роль агента и когда нужен инструмент. Вызов `tools=[...]` передаёт модели схему функции. Ответ модели может содержать `tool_calls`: имя выбранного инструмента и аргументы. **Сам вызов модели не выполняет функцию.** Код приложения должен проверить имя и выполнить разрешённый инструмент.
+
+## Действие и наблюдение [[action-and-observation]]
+
+После решения модели мы добавляем её сообщение в историю, выполняем инструмент и возвращаем результат как сообщение с ролью `tool`:
+
+```python
+messages.append(first.message)
+for call in first.message.tool_calls or []:
+    if call.function.name != "get_current_time_in_timezone":
+        raise ValueError("Неизвестный инструмент")
+    observation = get_current_time_in_timezone(**call.function.arguments)
+    messages.append({
+        "role": "tool",
+        "tool_name": call.function.name,
+        "content": observation,
+    })
+
+final = client.chat(model="qwen3:4b-instruct", messages=messages)
+print(final.message.content)
+```
+
+Теперь модель видит **наблюдение**, например фактическое время сервера, и может включить его в окончательный ответ. Если `tool_calls` пуст, модель сразу ответила текстом: в этом случае нужно оценить, выполнила ли она задачу, и при необходимости уточнить промпт. В [полном исполняемом примере](/course/examples/first-local-agent/manual_agent.py) эта ситуация обработана. Там же есть проверка неизвестного часового пояса. Запустите `python manual_agent.py` из папки `first-local-agent`, когда выполните шаги установки в следующем уроке.
+
+Мы вручную сделали то, что обычно делает агентная библиотека: сохранили историю, вызвали модель, направили её решение к инструменту и передали результат обратно. При нескольких инструментах и повторных шагах такой код быстро усложняется. В [следующем уроке](tutorial) мы соберём тот же цикл с LangGraph и получим первого локального агента.

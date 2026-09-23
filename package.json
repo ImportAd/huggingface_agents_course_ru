@@ -1,0 +1,16 @@
+{
+  "name": "agents-course-local",
+  "private": true,
+  "workspaces": ["local-course-reader"],
+  "scripts": {
+    "dev": "npm run dev --workspace local-course-reader",
+    "dev:lan": "npm run dev:lan --workspace local-course-reader",
+    "build": "npm run build --workspace local-course-reader",
+    "preview": "npm run preview --workspace local-course-reader",
+    "preview:lan": "npm run preview:lan --workspace local-course-reader",
+    "update-course": "npm run update-course --workspace local-course-reader",
+    "test": "npm run test --workspace local-course-reader",
+    "test:browser": "npm run test:browser --workspace local-course-reader"
+  },
+  "engines": { "node": ">=22.12.0" }
+}
