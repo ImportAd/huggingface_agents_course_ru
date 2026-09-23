@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { htmlToDOM } from 'html-react-parser';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
@@ -142,6 +143,18 @@ test('изменение оригинала и локального перево
   const meta = { sourceSha256: 'not-a-match', translationSha256: 'not-a-match' };
   assert.deepEqual(translationStatus('updated', 'changed', meta), { sourceChanged: true, translationChanged: true });
   assert.deepEqual(translationStatus('new', 'new', undefined), { sourceChanged: true, translationChanged: true });
+});
+
+test('контрольные хеши одинаковы для LF и CRLF', () => {
+  const digest = (value) => createHash('sha256').update(value).digest('hex');
+  const metadata = {
+    sourceSha256: digest('source\nline\n'),
+    translationSha256: digest('перевод\nстрока\n'),
+  };
+  assert.deepEqual(
+    translationStatus('source\r\nline\r\n', 'перевод\r\nстрока\r\n', metadata),
+    { sourceChanged: false, translationChanged: false },
+  );
 });
 
 test('локальные актуализации официальных RU отслеживаются и содержат локальный практикум', async () => {

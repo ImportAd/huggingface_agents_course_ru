@@ -14,7 +14,8 @@ export const exampleRoot = path.resolve(appRoot, '../first-local-agent');
 export const outputRoot = path.join(appRoot, 'public/course');
 const slash = (s) => s.replaceAll('\\', '/');
 const natural = (a, b) => a.localeCompare(b, 'en', { numeric: true });
-const sha256 = (s) => createHash('sha256').update(s).digest('hex');
+const normalizeForHash = (s) => s.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+const sha256 = (s) => createHash('sha256').update(normalizeForHash(s)).digest('hex');
 export function translationStatus(source, translated, metadata) {
   return { sourceChanged: !metadata || sha256(source) !== metadata.sourceSha256, translationChanged: !metadata || sha256(translated) !== metadata.translationSha256 };
 }

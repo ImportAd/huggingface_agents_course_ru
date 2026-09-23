@@ -11,7 +11,8 @@ import { appRoot, sourceRoot, outputRoot } from './generate.mjs';
 
 const work = path.join(appRoot, '.translation-work');
 const translationRoot = path.resolve(appRoot, '../course-translations');
-const sha256 = (s) => createHash('sha256').update(s).digest('hex');
+const normalizeForHash = (s) => s.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+const sha256 = (s) => createHash('sha256').update(normalizeForHash(s)).digest('hex');
 const parser = unified().use(remarkParse).use(remarkGfm);
 const [command, ...requested] = process.argv.slice(2);
 if (command === 'extract') {
