@@ -14,6 +14,7 @@ import { renderLesson, resolveCourseLink, prepareMdx } from '../scripts/renderer
 const manifest = JSON.parse(await fs.readFile(path.join(outputRoot, 'manifest.json'), 'utf8'));
 const flatten = (nodes) => nodes.flatMap((n) => n.id ? [n.id] : flatten(n.children));
 const text = (node) => node.type === 'text' ? node.data : (node.children || []).map(text).join('');
+const normalizeEol = (value) => value.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 function elements(nodes, tag) {
   return nodes.flatMap((node) => [...(node.name === tag ? [node] : []), ...elements(node.children || [], tag)]);
 }
@@ -107,7 +108,7 @@ test('все недостающие переводы: код, URL, якоря, �
   const parser = unified().use(remarkParse).use(remarkGfm);
   const blocks = (source) => {
     const result = [];
-    visit(parser.parse(source), 'code', (node) => result.push({ lang: node.lang, meta: node.meta, value: node.value }));
+    visit(parser.parse(source), 'code', (node) => result.push({ lang: node.lang, meta: node.meta, value: normalizeEol(node.value) }));
     return result;
   };
   const urls = (source) => [...source.matchAll(/https?:\/\/[^\s<>"')\]]+/g)].map((m) => m[0]).sort();
