@@ -38,7 +38,7 @@ npm.cmd --version
 git --version
 ```
 
-Если PowerShell блокирует `npm.ps1`, используйте `npm.cmd install` и `npm.cmd run dev`. Менять политику выполнения PowerShell не требуется.
+Если PowerShell блокирует `npm.ps1`, используйте `npm.cmd ci` и `npm.cmd run dev`. Менять политику выполнения PowerShell не требуется.
 
 ## Запуск на Ubuntu
 
